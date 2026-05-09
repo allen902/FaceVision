@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/Detection-InsightFace%20RetinaFace-brightgreen" alt="Detection: RetinaFace"/>
   <img src="https://img.shields.io/badge/Recognition-Cosine%20Similarity-success" alt="Recognition: Cosine Similarity"/>
   <img src="https://img.shields.io/badge/GPU-DirectML-orange" alt="GPU: DirectML"/>
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"/>
 </p>
 
 > 一个基于 `insightface` 和 `CustomTkinter` 的 Windows 实时人脸识别系统，支持 DirectML GPU 加速与自动 CPU 回退。
@@ -15,6 +16,7 @@
 ## 📋 目录
 
 - [功能特性](#-功能特性)
+- [技术栈](#-技术栈)
 - [环境要求](#-环境要求)
 - [安装指南](#-安装指南)
 - [快速开始](#-快速开始)
@@ -22,6 +24,7 @@
 - [配置文件说明](#-配置文件说明)
 - [项目结构](#-项目结构)
 - [常见问题](#-常见问题)
+- [贡献指南](#-贡献指南)
 - [许可证](#-许可证)
 
 ---
@@ -36,6 +39,21 @@
 - 多帧注册：15 帧特征融合提高注册稳定性
 - 支持本地图片导入并选择目标人脸注册
 - 界面基于 CustomTkinter，UI 与 ML 处理线程分离
+
+---
+
+## 🛠 技术栈
+
+| 组件 | 技术 |
+|------|------|
+| **编程语言** | Python 3.9+ |
+| **GUI 框架** | CustomTkinter (现代化 Tkinter 主题) |
+| **人脸检测** | InsightFace (RetinaFace + MobileFaceNet) |
+| **特征提取** | ArcFace (512 维归一化嵌入) |
+| **相似度计算** | 余弦相似度 (1:N 匹配) |
+| **推理后端** | ONNX Runtime (DirectML / CPU) |
+| **图像处理** | OpenCV、Pillow |
+| **数字计算** | NumPy |
 
 ---
 
@@ -63,7 +81,7 @@ numpy>=1.24.0
 ## 📦 安装指南
 
 ```bash
-git clone https://github.com/allen902/FaceVision-.git
+git clone https://github.com/allen902/FaceVision.git
 cd facevision_py
 python -m venv venv
 .\venv\Scripts\activate
@@ -156,20 +174,21 @@ python main.py
 ```text
 facevision_py/
 ├── .gitignore
-├── main.py
-├── config.py
-├── camera.py
-├── face_detector.py
-├── face_recognizer.py
-├── face_database.py
-├── ui.py
-├── settings_dialog.py
-├── requirements.txt
-├── README.md
-├── settings.json       # 运行时生成
-├── face_db.json        # 运行时生成
-├── encodings.pkl       # 运行时生成
-└── face_photos/        # 运行时生成
+├── LICENSE                # MIT 许可证
+├── main.py                # 程序入口
+├── config.py              # 配置管理
+├── camera.py              # 摄像头采集线程
+├── face_detector.py       # 人脸检测与特征提取
+├── face_recognizer.py     # 人脸识别 (余弦相似度 1:N)
+├── face_database.py       # 人脸数据持久化
+├── ui.py                  # 主界面
+├── settings_dialog.py     # 设置对话框
+├── requirements.txt       # Python 依赖
+├── README.md              # 项目说明文档
+├── settings.json          # 运行时生成的配置文件
+├── face_db.json           # 运行时生成的人员数据库
+├── encodings.pkl          # 运行时生成的特征向量
+└── face_photos/           # 运行时生成的注册照片目录
 ```
 
 ---
@@ -180,9 +199,34 @@ facevision_py/
 - **GPU 按钮不可用**：说明当前环境没有 `DmlExecutionProvider`，请安装 `onnxruntime-directml` 或改用 CPU。
 - **注册失败**：请让人脸正对摄像头并保持稳定，避免遮挡和快速移动。
 - **识别结果为“未知”**：可适当降低 `tolerance` 或重新注册更清晰的样本。
+- **ONNX Runtime 加载失败**：请确保安装的 `onnxruntime` / `onnxruntime-directml` 版本与 Python 及系统架构匹配。
+
+---
+
+## 🤝 贡献指南
+
+欢迎贡献代码、提交 Issue 或改进建议！
+
+### 贡献流程
+
+1. Fork 本仓库
+2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开一个 Pull Request
+
+### 开发建议
+
+- 代码风格请遵循 [PEP 8](https://peps.python.org/pep-0008/)。
+- 提交前请确保代码可以正常运行，无语法错误。
+- 若添加新功能，请在 PR 中提供相应的使用说明。
 
 ---
 
 ## 📄 许可证
 
-本项目当前未指定许可证，如需发布请补充 `LICENSE` 文件。
+本项目基于 **MIT 许可证** 开源 — 详见 [LICENSE](LICENSE) 文件。
+
+Copyright (c) 2026 [Allen](https://github.com/allen902)
+
+> 你可以自由地使用、修改和分发本软件，但需保留原始版权声明和许可证声明。本软件按"原样"提供，不提供任何明示或暗示的担保。
