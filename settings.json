@@ -1,0 +1,9 @@
+{
+  "device": "cuda",
+  "confidence": 0.25,
+  "tolerance": 0.30000000000000004,
+  "cam_width": 1280,
+  "cam_height": 720,
+  "cam_fps": 30,
+  "proc_fps": 10
+}

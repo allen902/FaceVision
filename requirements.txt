@@ -1,0 +1,8 @@
+opencv-python>=4.8.0
+insightface>=0.7.3
+onnxruntime-directml>=1.21.0
+customtkinter>=5.2.0
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# 如果 onnxruntime-directml 安装失败，可改为 onnxruntime（CPU 模式）
