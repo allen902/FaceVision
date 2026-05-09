@@ -1,3 +1,7 @@
+# 面部识别相关数据文件
+encodings.pkl
+face_db.json
+settings.json
 # Python 编译/缓存文件
 __pycache__/
 *.py[cod]
