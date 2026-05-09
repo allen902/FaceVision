@@ -2,6 +2,11 @@
 encodings.pkl
 face_db.json
 settings.json
+
+# 忽略整个图片文件夹
+face_photos/
+face_photos/**/*
+
 # Python 编译/缓存文件
 __pycache__/
 *.py[cod]

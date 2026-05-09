@@ -7,6 +7,7 @@
 import cv2
 import numpy as np
 import logging
+import threading
 
 logger = logging.getLogger("FaceVision.detector")
 
@@ -19,6 +20,7 @@ class FaceDetector:
         self.device = device
         self.fp16 = device == "cuda"  # GPU 开启半精度
         self.app = None
+        self._lock = threading.Lock()
         self._load_model()
 
     def _load_model(self):
@@ -69,7 +71,8 @@ class FaceDetector:
             return []
 
         try:
-            faces = self.app.get(frame)
+            with self._lock:
+                faces = self.app.get(frame)
             results = []
             for face in faces:
                 bbox = face.bbox.astype(int)
@@ -90,7 +93,8 @@ class FaceDetector:
             return []
 
         try:
-            faces = self.app.get(frame)
+            with self._lock:
+                faces = self.app.get(frame)
             results = []
             for face in faces:
                 bbox = face.bbox.astype(int)

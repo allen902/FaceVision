@@ -35,6 +35,7 @@ class ProcessingThread:
         self.recognizer = recognizer
         self.db = database
         self.running = False
+        self.paused = False
         self.lock = threading.Lock()
         self.display_frame = None  # 已绘制的显示帧
         self.latest_results = []  # 最新识别结果
@@ -51,6 +52,14 @@ class ProcessingThread:
         self.running = False
         if hasattr(self, 'thread'):
             self.thread.join(timeout=3.0)
+
+    def pause(self):
+        """暂停后台处理（用于注册期间避免模型并发）"""
+        self.paused = True
+
+    def resume(self):
+        """恢复后台处理"""
+        self.paused = False
 
     def get_display_frame(self):
         with self.lock:
@@ -71,6 +80,10 @@ class ProcessingThread:
         fps_timer = time.time()
 
         while self.running:
+            if self.paused:
+                time.sleep(0.050)
+                continue
+
             loop_start = time.time()
 
             # 获取摄像头帧
@@ -469,6 +482,11 @@ class FaceVisionApp(ctk.CTk):
             return
         self._add_from_image(name, file_path)
 
+    def _resume_processing(self):
+        """恢复后台处理线程"""
+        if self.processing:
+            self.processing.resume()
+
     def _capture_and_add(self, name):
         """
         多帧注册：连续采集多帧，用 detect_with_embeddings 提取特征
@@ -479,18 +497,29 @@ class FaceVisionApp(ctk.CTk):
             messagebox.showwarning("无画面", "请先启动摄像头再添加人员。")
             return
 
+        # 注册期间暂停后台处理线程，避免模型并发访问
+        if self.processing:
+            self.processing.pause()
+            self.after(100, lambda: self._do_capture(name))
+        else:
+            self._do_capture(name)
+
+    def _do_capture(self, name):
+        """实际执行多帧采集（与后台线程互斥）"""
         self._set_status("⏳ 正在采集人脸，请保持不动…", ACCENT_COLOR)
 
         # ── 第1步：获取一帧，检测所有人脸 ──
         frame = self.camera.get_frame()
         if frame is None:
             self._set_status("✗ 获取画面失败", DANGER_COLOR)
+            self._resume_processing()
             return
 
         faces = self.detector.detect_with_embeddings(frame)
         if len(faces) == 0:
             self._set_status("✗ 未检测到人脸", DANGER_COLOR)
             messagebox.showwarning("未检测到", "画面中未检测到清晰人脸。")
+            self._resume_processing()
             return
 
         # ── 第2步：多人同框 → 让用户选择 ──
@@ -580,6 +609,8 @@ class FaceVisionApp(ctk.CTk):
         else:
             messagebox.showwarning("添加失败", msg)
             self._set_status("● 就绪", TEXT_SECONDARY)
+
+        self._resume_processing()
 
     def _add_from_image(self, name, file_path):
         """从图片文件提取特征并注册"""
