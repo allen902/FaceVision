@@ -1,5 +1,3 @@
-
-
 """
 FaceVision 全局配置
 """
@@ -11,7 +9,7 @@ SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
 DEFAULT_SETTINGS = {
     "device": "cuda",         # cpu / cuda
     "confidence": 0.25,
-    "tolerance": 0.30,        # buffalo_l 推荐 0.25~0.35
+    "tolerance": 0.45,        # buffalo_l 余弦相似度阈值: 0.40=严格, 0.45=推荐, 0.50=宽松
     "cam_width": 640,
     "cam_height": 360,
     "cam_fps": 30,
