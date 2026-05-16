@@ -2,14 +2,14 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9%2B-blue" alt="Python 3.9+"/>
-  <img src="https://img.shields.io/badge/GUI-CustomTkinter-0078D4" alt="GUI: CustomTkinter"/>
+  <img src="https://img.shields.io/badge/GUI-PyQt5_(Win11_Glass)-0078D4" alt="GUI: PyQt5"/>
   <img src="https://img.shields.io/badge/Detection-InsightFace%20RetinaFace-brightgreen" alt="Detection: RetinaFace"/>
   <img src="https://img.shields.io/badge/Recognition-Cosine%20Similarity-success" alt="Recognition: Cosine Similarity"/>
   <img src="https://img.shields.io/badge/GPU-DirectML-orange" alt="GPU: DirectML"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"/>
 </p>
 
-> 一个基于 `insightface` 和 `CustomTkinter` 的 Windows 实时人脸识别系统，支持 DirectML GPU 加速与自动 CPU 回退。
+> 一个基于 `insightface` 和 `PyQt5` 的 Windows 实时人脸识别系统，采用 Windows 11 玻璃态（Acrylic/Mica）UI，支持 DirectML GPU 加速与自动 CPU 回退。
 
 ---
 
@@ -38,7 +38,9 @@
 - 实时参数调节：检测置信度、识别容差、处理帧率、分辨率
 - 多帧注册：15 帧特征融合提高注册稳定性
 - 支持本地图片导入并选择目标人脸注册
-- 界面基于 CustomTkinter，UI 与 ML 处理线程分离
+- Windows 11 玻璃态仪表盘 UI（PyQt5），支持浅色/深色主题切换
+- UI 与 ML 处理线程完全分离，流畅不卡顿
+- 无边框对话框支持自由拖动
 
 ---
 
@@ -47,7 +49,7 @@
 | 组件 | 技术 |
 |------|------|
 | **编程语言** | Python 3.9+ |
-| **GUI 框架** | CustomTkinter (现代化 Tkinter 主题) |
+| **GUI 框架** | PyQt5 (Windows 11 玻璃态 Acrylic/Mica) |
 | **人脸检测** | InsightFace (RetinaFace + MobileFaceNet) |
 | **特征提取** | ArcFace (512 维归一化嵌入) |
 | **相似度计算** | 余弦相似度 (1:N 匹配) |
@@ -69,7 +71,7 @@
 opencv-python>=4.8.0
 insightface>=0.7.3
 onnxruntime-directml>=1.21.0
-customtkinter>=5.2.0
+PyQt5>=5.15.9
 Pillow>=10.0.0
 numpy>=1.24.0
 ```
@@ -181,8 +183,9 @@ facevision_py/
 ├── face_detector.py       # 人脸检测与特征提取
 ├── face_recognizer.py     # 人脸识别 (余弦相似度 1:N)
 ├── face_database.py       # 人脸数据持久化
-├── ui.py                  # 主界面
-├── settings_dialog.py     # 设置对话框
+├── ui.py                  # 原 Tkinter 主界面（已弃用）
+├── ui_pyqt.py             # PyQt5 主界面，Windows 11 玻璃态
+├── settings_dialog.py     # 设置对话框（已弃用，整合至 ui_pyqt.py）
 ├── requirements.txt       # Python 依赖
 ├── README.md              # 项目说明文档
 ├── settings.json          # 运行时生成的配置文件
@@ -198,7 +201,7 @@ facevision_py/
 - **未检测到摄像头**：请确认摄像头已连接并允许访问。
 - **GPU 按钮不可用**：说明当前环境没有 `DmlExecutionProvider`，请安装 `onnxruntime-directml` 或改用 CPU。
 - **注册失败**：请让人脸正对摄像头并保持稳定，避免遮挡和快速移动。
-- **识别结果为“未知”**：可适当降低 `tolerance` 或重新注册更清晰的样本。
+- **识别结果为"未知"**：可适当降低 `tolerance` 或重新注册更清晰的样本。
 - **ONNX Runtime 加载失败**：请确保安装的 `onnxruntime` / `onnxruntime-directml` 版本与 Python 及系统架构匹配。
 
 ---

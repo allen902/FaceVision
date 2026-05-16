@@ -1,18 +1,21 @@
 """
 FaceVision — 实时人脸识别系统
-主入口
+主入口（PyQt5 玻璃态仪表盘版）
 
 架构:
   camera.py         — 摄像头采集线程 (640x360 @ 15fps)
-  face_detector.py  — YOLOv8n 人体检测 → 推算面部框
-  face_recognizer.py — facenet-pytorch 编码比对
-  face_database.py  — JSON + pic
-  ui.py             — CustomTkinter UI + 独立处理线程
+  face_detector.py  — insightface RetinaFace 人脸检测
+  face_recognizer.py — 余弦相似度 1:N 识别
+  face_database.py  — JSON + pickle 持久化
+  ui_pyqt.py        — PyQt5 Windows 11 玻璃态仪表盘 UI
 """
 
 import sys
+import os
 import warnings
 
+# 抑制非关键警告
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -21,14 +24,15 @@ from face_database import FaceDatabase
 from face_detector import FaceDetector
 from face_recognizer import FaceRecognizer
 from camera import CameraThread
-from ui import FaceVisionApp, APP_SETTINGS
+from config import APP_SETTINGS
 
 
 def main():
     
     print("=" * 50)
     print("  FaceVision — 实时人脸识别系统")
-    print("  RetinaFace + insightface + CustomTkinter")
+    print("  PyQt5 · Windows 11 玻璃态仪表盘")
+    print("  RetinaFace + insightface")
     print("=" * 50)
 
     device = APP_SETTINGS.get("device", "cpu")
@@ -42,7 +46,6 @@ def main():
     db = FaceDatabase()
     print(f"      已注册 {len(db.get_names())} 人")
 
-    device = APP_SETTINGS.get("device", "cpu")
     print(f"[2/4] 加载人脸检测模型 (RetinaFace + DirectML, device={device})…")
     detector = FaceDetector(
         confidence=APP_SETTINGS.get("confidence", 0.25),
@@ -72,9 +75,11 @@ def main():
         fps=cam_fps
     )
 
-    print("\n✓ 初始化完成，启动界面…\n")
-    app = FaceVisionApp(camera, db, detector, recognizer)
-    app.mainloop()
+    print("\n✓ 初始化完成，启动 PyQt5 界面…\n")
+    
+    # 导入并运行 PyQt5 UI
+    from ui_pyqt import run_app
+    sys.exit(run_app(camera, db, detector, recognizer))
 
 
 if __name__ == "__main__":
