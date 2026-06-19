@@ -1,18 +1,28 @@
 """
 FaceVision — 实时人脸识别系统
-主入口（PyQt5 玻璃态仪表盘版）
+主入口（PyQt6 玻璃态仪表盘版）
 
 架构:
   camera.py         — 摄像头采集线程 (640x360 @ 15fps)
   face_detector.py  — insightface RetinaFace 人脸检测
   face_recognizer.py — 余弦相似度 1:N 识别
   face_database.py  — JSON + pickle 持久化
-  ui_pyqt.py        — PyQt5 Windows 11 玻璃态仪表盘 UI
+  ui_pyqt6.py       — PyQt6 Windows 11 玻璃态仪表盘 UI
 """
 
 import sys
 import os
+import io
 import warnings
+
+# Force UTF-8 encoding for stdout/stderr on Windows
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        print("[main] Switched stdout to UTF-8 encoding")
+    except Exception:
+        pass
 
 # 抑制非关键警告
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -31,7 +41,7 @@ def main():
     
     print("=" * 50)
     print("  FaceVision — 实时人脸识别系统")
-    print("  PyQt5 · Windows 11 玻璃态仪表盘")
+    print("  PyQt6 · Windows 11 玻璃态仪表盘")
     print("  RetinaFace + insightface")
     print("=" * 50)
 
@@ -48,13 +58,16 @@ def main():
 
     print(f"[2/4] 加载人脸检测模型 (RetinaFace + DirectML, device={device})…")
     detector = FaceDetector(
-        confidence=APP_SETTINGS.get("confidence", 0.25),
-        device=device
+        confidence=APP_SETTINGS.get("confidence", 0.50),
+        device=device,
+        det_size=APP_SETTINGS.get("det_size", 480),
+        quality_filter=APP_SETTINGS.get("quality_filter", True),
+        min_face_size=APP_SETTINGS.get("min_face_size", 80)
     )
 
     print("[3/4] 初始化人脸识别器…")
     recognizer = FaceRecognizer(
-        tolerance=APP_SETTINGS.get("tolerance", 0.5),
+        tolerance=APP_SETTINGS.get("tolerance", 0.45),
         device=device
     )
 
@@ -75,10 +88,10 @@ def main():
         fps=cam_fps
     )
 
-    print("\n✓ 初始化完成，启动 PyQt5 界面…\n")
+    print("\n✓ 初始化完成，启动 PyQt6 界面…\n")
     
-    # 导入并运行 PyQt5 UI
-    from ui_pyqt import run_app
+    # 导入并运行 PyQt6 UI
+    from ui_pyqt6 import run_app
     sys.exit(run_app(camera, db, detector, recognizer))
 
 

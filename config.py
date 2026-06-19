@@ -7,13 +7,17 @@ import os
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
 
 DEFAULT_SETTINGS = {
-    "device": "cuda",         # cpu / cuda
-    "confidence": 0.25,
-    "tolerance": 0.45,        # buffalo_l 余弦相似度阈值: 0.40=严格, 0.45=推荐, 0.50=宽松
-    "cam_width": 640,
-    "cam_height": 360,
-    "cam_fps": 30,
-    "proc_fps": 12,           # 降低处理帧率减轻 GPU/CPU 负载
+    "device": "cuda",              # cpu / cuda
+    "confidence": 0.50,            # 检测置信度阈值（提高以减少误检，RetinaFace 推荐 ≥0.45）
+    "tolerance": 0.45,             # buffalo_l 余弦相似度阈值: 0.40=严格, 0.45=推荐, 0.50=宽松
+    "cam_width": 640,              # 摄像头采集宽度（降低以提升速度）
+    "cam_height": 360,             # 摄像头采集高度
+    "cam_fps": 30,                 # 摄像头采集帧率
+    "proc_fps": 30,                # ML 处理帧率上限（0=不限，始终处理最新帧）
+    "det_size": 640,               # 检测模型输入尺寸: 320=快, 480=均衡, 640=精准(推荐)
+    "track_smooth": 5,             # 时序追踪平滑帧数: 3=快速响应, 5=推荐, 8=最稳定
+    "min_face_size": 60,           # 最小人脸尺寸 (px)，小于此值标记为低质量
+    "quality_filter": True,        # 是否启用人脸质量过滤（模糊度检测）
 }
 
 

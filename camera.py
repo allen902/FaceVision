@@ -1,12 +1,14 @@
 """
 摄像头线程管理模块
 在独立线程中采集摄像头画面，线程安全地提供最新帧
+使用 deque(maxlen=1) 实现 latest-frame 机制 — 始终拿最新帧
 """
 
 import cv2
 import threading
 import time
 import os
+from collections import deque
 
 # 屏蔽 OpenCV DShow 后端在检测不存在摄像头时的警告
 os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
@@ -15,18 +17,19 @@ os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
 class CameraThread:
     """摄像头采集线程 — 仅负责采集，不做任何处理"""
 
-    def __init__(self, camera_id=0, width=480, height=360, fps=30):
+    def __init__(self, camera_id=0, width=640, height=360, fps=30):
         self.camera_id = camera_id
         self.width = width
         self.height = height
         self.target_fps = fps
         self.cap = None
         self.running = False
-        self.frame = None
+        self._frame_buffer = deque(maxlen=1)  # latest-frame: 只保留最新一帧
         self.lock = threading.Lock()
         self.thread = None
         self._actual_fps = 0.0
         self._fps_lock = threading.Lock()
+        self._frame_available = threading.Event()  # 可等待的信号量
 
     @property
     def actual_fps(self):
@@ -53,27 +56,32 @@ class CameraThread:
         print(f"[Camera] 实际分辨率: {int(actual_w)}x{int(actual_h)}")
 
         self.running = True
+        self._frame_available.clear()
         self.thread = threading.Thread(target=self._loop, daemon=True)
         self.thread.start()
 
     def stop(self):
         """停止摄像头"""
         self.running = False
+        self._frame_available.set()  # 唤醒可能在等待的线程
         if self.thread:
             self.thread.join(timeout=2.0)
         if self.cap:
             self.cap.release()
         self.cap = None
 
-    def get_frame(self):
+    def get_frame(self, timeout=0.05):
         """
-        线程安全获取最新帧
-        返回 None 如果没有可用帧
+        线程安全获取最新帧（latest-frame 模式）
+        始终返回缓冲区中最新的帧；如果 50ms 内无新帧则返回 None
         """
-        with self.lock:
-            if self.frame is None:
-                return None
-            return self.frame.copy()
+        if self._frame_available.wait(timeout):
+            with self.lock:
+                if len(self._frame_buffer) > 0:
+                    frame = self._frame_buffer[0]
+                    self._frame_available.clear()
+                    return frame.copy()  # 返回副本，避免外部修改污染缓冲区
+        return None
 
     def _loop(self):
         """主循环 — 纯采集，极简"""
@@ -91,8 +99,10 @@ class CameraThread:
             # 镜像翻转（更自然）
             frame = cv2.flip(frame, 1)
 
+            # 写入 latest-frame 缓冲区（自动丢弃旧帧）
             with self.lock:
-                self.frame = frame
+                self._frame_buffer.append(frame)
+                self._frame_available.set()
 
             # FPS 统计
             fps_counter += 1

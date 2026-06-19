@@ -1,6 +1,7 @@
 """
 人脸数据库管理模块
 负责存储和管理已注册人员的面部编码与姓名
+内置版本号追踪 — 供 FaceRecognizer 缓存失效判断
 """
 
 import json
@@ -18,7 +19,13 @@ class FaceDatabase:
         self.encoding_path = Path(encoding_path)
         self.persons = []          # 人员列表：[{name, image_path}, ...]
         self.encodings = []        # 面部编码列表
+        self._version = 0          # 数据库版本号，每次增删自增
         self.load()
+
+    @property
+    def version(self):
+        """数据库版本号 — 供缓存失效判断"""
+        return self._version
 
     def add_person(self, name: str, image_path: str, encoding: np.ndarray):
         """添加人员记录"""
@@ -33,6 +40,7 @@ class FaceDatabase:
         }
         self.persons.append(person)
         self.encodings.append(encoding)
+        self._version += 1
         self.save()
         return True, f"已添加: {name}"
 
@@ -45,6 +53,7 @@ class FaceDatabase:
                     img_path.unlink(missing_ok=True)
                 del self.persons[i]
                 del self.encodings[i]
+                self._version += 1
                 self.save()
                 return True, f"已移除: {name}"
         return False, f"未找到: {name}"
@@ -74,6 +83,8 @@ class FaceDatabase:
             del self.persons[i]
             del self.encodings[i]
 
+        if removed:
+            self._version += 1
         self.save()
         return removed, not_found
 
@@ -107,6 +118,9 @@ class FaceDatabase:
             with open(self.encoding_path, "rb") as f:
                 self.encodings = pickle.load(f)
 
+        # 加载后递增版本号，触发首次缓存构建
+        self._version += 1
+
     def clear(self):
         """清空数据库"""
         for person in self.persons:
@@ -116,6 +130,7 @@ class FaceDatabase:
 
         self.persons = []
         self.encodings = []
+        self._version += 1
         if self.db_path.exists():
             self.db_path.unlink()
         if self.encoding_path.exists():

@@ -5,6 +5,7 @@ settings.json
 
 #旧版本代码
 ui.py
+ui_pyqt.py
 
 # 忽略整个图片文件夹
 face_photos/
