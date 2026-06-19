@@ -12,6 +12,10 @@
 
 > 基于 `insightface` 和 `PyQt6` 的 Windows 实时人脸识别系统，深色 Windows 11 Mica 玻璃态 UI，支持 DirectML GPU 加速。
 
+<p align="center">
+  <img src="pic/image1.png" alt="FaceVision 主界面" width="80%"/>
+</p>
+
 ---
 
 ## 📋 目录
@@ -138,6 +142,10 @@ python main.py
 | 追踪平滑帧数 | 滑块 | 3 ~ 10 | 身份确认所需连续帧数 |
 | 质量过滤 | 复选框 | 开/关 | 模糊度检测 |
 | 最小人脸尺寸 | 下拉框 | 60 / 80 / 100 / 120 px | 小于此值过滤 |
+
+<p align="center">
+  <img src="pic/image2.png" alt="FaceVision 设置界面" width="80%"/>
+</p>
 
 ---
 
