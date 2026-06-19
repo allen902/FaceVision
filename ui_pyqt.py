@@ -494,50 +494,68 @@ def get_glass_stylesheet(is_dark=False):
 
 
 class BlurBackground(QWidget):
-    """玻璃背景绘制控件 — 模拟 Acrylic/Mica 效果"""
-    
+    """玻璃背景绘制控件 — 模拟 Acrylic/Mica 效果，pixmap 缓存"""
+
     def __init__(self, parent=None, is_dark=False):
         super().__init__(parent)
         self.is_dark = is_dark
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground, False)
-    
-    def paintEvent(self, event):
-        painter = QPainter(self)
+        self._cached_pixmap = None
+        self._cached_size = None
+        self._cached_dark = None
+
+    def _render_blur(self, w, h, is_dark):
+        pixmap = QPixmap(w, h)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        
-        if self.is_dark:
+
+        if is_dark:
             bg_color = QColor(28, 28, 28, 200)
             highlight = QColor(255, 255, 255, 8)
         else:
             bg_color = QColor(245, 247, 250, 200)
             highlight = QColor(255, 255, 255, 40)
-        
+
         path = QPainterPath()
-        path.addRoundedRect(0, 0, self.width(), self.height(), 12, 12)
+        path.addRoundedRect(0, 0, w, h, 12, 12)
         painter.fillPath(path, bg_color)
-        
-        highlight_rect = QRect(0, 0, self.width(), int(self.height() * 0.35))
+
+        highlight_rect = QRect(0, 0, w, int(h * 0.35))
         highlight_path = QPainterPath()
-        highlight_path.addRoundedRect(
-            QRectF(highlight_rect),
-            12, 12
-        )
+        highlight_path.addRoundedRect(QRectF(highlight_rect), 12, 12)
         painter.fillPath(highlight_path, highlight)
-        
+
         pen = QPen(
-            QColor(255, 255, 255, 60) if not self.is_dark else QColor(255, 255, 255, 15),
-            1
+            QColor(255, 255, 255, 60) if not is_dark else QColor(255, 255, 255, 15), 1
         )
         painter.setPen(pen)
         border_path = QPainterPath()
-        border_path.addRoundedRect(0, 0, self.width() - 1, self.height() - 1, 12, 12)
+        border_path.addRoundedRect(0, 0, w - 1, h - 1, 12, 12)
         painter.drawPath(border_path)
+        painter.end()
+        return pixmap
+
+    def paintEvent(self, event):
+        w, h = self.width(), self.height()
+        if w <= 0 or h <= 0:
+            return
+
+        cache_key = (w, h, self.is_dark)
+        if (self._cached_pixmap is None or self._cached_size != (w, h)
+                or self._cached_dark != self.is_dark):
+            self._cached_pixmap = self._render_blur(w, h, self.is_dark)
+            self._cached_size = (w, h)
+            self._cached_dark = self.is_dark
+
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self._cached_pixmap)
 
 
 class GlassPanel(QFrame):
-    """玻璃面板 — 带 Acrylic 效果的容器"""
-    
+    """玻璃面板 — 带 Acrylic 效果的容器，背景 pixmap 缓存"""
+
     def __init__(self, parent=None, is_dark=False):
         super().__init__(parent)
         self.is_dark = is_dark
@@ -545,14 +563,18 @@ class GlassPanel(QFrame):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet("")
         self._corner_radius = 12
-    
-    def paintEvent(self, event):
-        painter = QPainter(self)
+        self._cached_pixmap = None
+        self._cached_size = None
+        self._cached_dark = None
+
+    def _render_panel(self, w, h, is_dark):
+        """渲染面板背景到 pixmap"""
+        pixmap = QPixmap(w, h)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        
-        w, h = self.width(), self.height()
-        
-        if self.is_dark:
+
+        if is_dark:
             bg = QColor(32, 32, 32, 190)
             top_light = QColor(255, 255, 255, 10)
             border = QColor(255, 255, 255, 15)
@@ -560,76 +582,116 @@ class GlassPanel(QFrame):
             bg = QColor(255, 255, 255, 210)
             top_light = QColor(255, 255, 255, 80)
             border = QColor(255, 255, 255, 120)
-        
+
         path = QPainterPath()
         path.addRoundedRect(1, 1, w - 2, h - 2, self._corner_radius, self._corner_radius)
         painter.fillPath(path, bg)
-        
+
         highlight_path = QPainterPath()
         highlight_path.addRoundedRect(
             QRectF(1, 1, w - 2, h * 0.3),
             self._corner_radius, self._corner_radius
         )
         painter.fillPath(highlight_path, top_light)
-        
+
         pen = QPen(border, 1)
         painter.setPen(pen)
         border_path = QPainterPath()
-        border_path.addRoundedRect(1, 1, w - 3, h - 3, 
+        border_path.addRoundedRect(1, 1, w - 3, h - 3,
                                    self._corner_radius, self._corner_radius)
         painter.drawPath(border_path)
+        painter.end()
+        return pixmap
+
+    def paintEvent(self, event):
+        w, h = self.width(), self.height()
+        if w <= 2 or h <= 2:
+            return
+
+        cache_key = (w, h, self.is_dark)
+        if (self._cached_pixmap is None or self._cached_size != (w, h)
+                or self._cached_dark != self.is_dark):
+            self._cached_pixmap = self._render_panel(w, h, self.is_dark)
+            self._cached_size = (w, h)
+            self._cached_dark = self.is_dark
+
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self._cached_pixmap)
 
 
 class BackgroundWidget(QWidget):
-    """背景渐变绘制"""
-    
+    """背景渐变绘制 — 缓存 pixmap，仅 resize 时重绘"""
+
     def __init__(self, parent=None, is_dark=False):
         super().__init__(parent)
         self.is_dark = is_dark
         self.setAttribute(Qt.WA_TranslucentBackground)
-    
-    def paintEvent(self, event):
-        painter = QPainter(self)
+        self._cached_pixmap = None
+        self._cached_size = None
+        self._cached_dark = None
+
+    def _render_background(self, width, height, is_dark):
+        """渲染背景到 pixmap 并缓存"""
+        pixmap = QPixmap(width, height)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        
-        if self.is_dark:
-            gradient = QLinearGradient(0, 0, self.width(), self.height())
+
+        if is_dark:
+            gradient = QLinearGradient(0, 0, width, height)
             gradient.setColorAt(0.0, QColor(20, 20, 24))
             gradient.setColorAt(0.5, QColor(24, 24, 30))
             gradient.setColorAt(1.0, QColor(18, 18, 22))
+            painter.fillRect(0, 0, width, height, gradient)
+
+            glow_center = QPoint(width // 3, height // 3)
+            glow_radius = min(width, height) * 0.4
+            glow = QRadialGradient(glow_center, glow_radius)
+            glow.setColorAt(0.0, QColor(60, 60, 80, 30))
+            glow.setColorAt(1.0, QColor(60, 60, 80, 0))
+            painter.fillRect(0, 0, width, height, glow)
         else:
-            gradient = QLinearGradient(0, 0, self.width(), self.height())
+            gradient = QLinearGradient(0, 0, width, height)
             gradient.setColorAt(0.0, QColor(240, 243, 248))
             gradient.setColorAt(0.5, QColor(235, 238, 245))
             gradient.setColorAt(1.0, QColor(228, 232, 240))
-        
-        painter.fillRect(self.rect(), gradient)
-        
-        if not self.is_dark:
-            glow_center = QPoint(self.width() // 4, self.height() // 4)
-            glow_radius = min(self.width(), self.height()) * 0.5
+            painter.fillRect(0, 0, width, height, gradient)
+
+            glow_center = QPoint(width // 4, height // 4)
+            glow_radius = min(width, height) * 0.5
             glow = QRadialGradient(glow_center, glow_radius)
             glow.setColorAt(0.0, QColor(255, 255, 255, 80))
             glow.setColorAt(0.5, QColor(255, 255, 255, 20))
             glow.setColorAt(1.0, QColor(255, 255, 255, 0))
-            painter.fillRect(self.rect(), glow)
-        
-        if self.is_dark:
-            glow_center = QPoint(self.width() // 3, self.height() // 3)
-            glow_radius = min(self.width(), self.height()) * 0.4
-            glow = QRadialGradient(glow_center, glow_radius)
-            glow.setColorAt(0.0, QColor(60, 60, 80, 30))
-            glow.setColorAt(1.0, QColor(60, 60, 80, 0))
-            painter.fillRect(self.rect(), glow)
+            painter.fillRect(0, 0, width, height, glow)
+
+        painter.end()
+        return pixmap
+
+    def paintEvent(self, event):
+        w, h = self.width(), self.height()
+        if w <= 0 or h <= 0:
+            return
+
+        # 仅在尺寸或主题变化时重建缓存
+        cache_key = (w, h, self.is_dark)
+        if (self._cached_pixmap is None or self._cached_size != (w, h)
+                or self._cached_dark != self.is_dark):
+            self._cached_pixmap = self._render_background(w, h, self.is_dark)
+            self._cached_size = (w, h)
+            self._cached_dark = self.is_dark
+
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self._cached_pixmap)
 
 
 # ═══════════════════════════════════════════════════════════════
-# 后台 ML 处理线程 (与原来逻辑一致)
+# 后台 ML 处理线程 — 集成时序追踪 + 质量过滤 + 编码缓存
 # ═══════════════════════════════════════════════════════════════
 class ProcessingThread(QThread):
     """后台 ML 处理线程 — 使用 QThread + signal"""
     frame_updated = pyqtSignal(np.ndarray, list, float)
-    
+
     def __init__(self, camera, detector, recognizer, database):
         super().__init__()
         self.camera = camera
@@ -639,75 +701,119 @@ class ProcessingThread(QThread):
         self.running = False
         self.paused = False
         self.lock = threading.Lock()
-        self._interval = 1.0 / APP_SETTINGS.get("proc_fps", 12)
         self._frame_idx = 0
         self._latest_results = []
         self._latest_fps = 0.0
-    
+
+        # 时序追踪器
+        from face_tracker import FaceTracker
+        smooth = APP_SETTINGS.get("track_smooth", 5)
+        self.tracker = FaceTracker(smooth_frames=smooth, iou_threshold=0.30, max_missed=10)
+
+        # 处理帧率（0 = 不限，始终处理最新帧）
+        proc_fps = APP_SETTINGS.get("proc_fps", 30)
+        self._interval = 1.0 / proc_fps if proc_fps > 0 else 0
+
     def stop(self):
         self.running = False
         self.wait(3000)
-    
+
     def pause(self):
         self.paused = True
-    
+
     def resume(self):
         self.paused = False
-    
+        if hasattr(self, 'tracker') and self.tracker:
+            self.tracker.reset()
+
     def run(self):
         self.running = True
         frame_count = 0
         fps_timer = time.time()
-        
+        last_process_time = 0
+
         while self.running:
             if self.paused:
                 time.sleep(0.050)
                 continue
-            
+
+            # latest-frame 模式：如果 proc_fps=0 则不限制帧率
+            if self._interval > 0:
+                now = time.time()
+                if now - last_process_time < self._interval:
+                    time.sleep(0.001)
+                    continue
+
             loop_start = time.time()
-            
+
             frame = self.camera.get_frame()
             if frame is None:
-                time.sleep(0.010)
+                time.sleep(0.005)
                 continue
-            
-            display = frame.copy()
+
+            # frame 已经是 get_frame() 返回的副本，无需再 copy
+            # 直接在 frame 上绘制
+            display = frame
+
+            # ── 编码缓存更新 ──
             known_encodings, known_names = self.db.get_encodings_and_names()
-            
+            self.recognizer.update_cache(known_encodings, known_names, self.db.version)
+
+            # ── 检测 + 特征提取 ──
             try:
                 faces_with_emb = self.detector.detect_with_embeddings(frame)
             except Exception:
-                time.sleep(0.010)
+                print("[ProcessingThread] ❌ detect_with_embeddings 抛出异常!")
+                import traceback
+                traceback.print_exc()
+                time.sleep(0.005)
                 continue
-            
+
+            # 诊断：前 3 帧 & 每 30 帧输出一次检测统计
             self._frame_idx += 1
-            
+            if self._frame_idx <= 3 or self._frame_idx % 30 == 1:
+                n_faces = len(faces_with_emb)
+                n_quality = sum(1 for f in faces_with_emb if f[6])  # quality_pass
+                print(f"[ProcessingThread] 帧#{self._frame_idx}: "
+                      f"检测到 {n_faces} 人脸, {n_quality} 通过质量检查, "
+                      f"追踪数={self.tracker.track_count}, "
+                      f"帧shape={frame.shape}")
+
+            # ── 时序追踪更新（使用 recognizer 内置缓存） ──
+            try:
+                tracked_faces = self.tracker.update(
+                    faces_with_emb,
+                    recognizer=self.recognizer
+                )
+            except Exception:
+                tracked_faces = []
+
+            # ── 绘制结果 ──
             results = []
-            for face_item in faces_with_emb:
-                x1, y1, x2, y2, det_conf, embedding = face_item
-                color = (0, 120, 215)
-                name = "?"
-                
-                if embedding is not None and len(known_encodings) > 0:
-                    try:
-                        name, rec_conf = self.recognizer.recognize(
-                            embedding, known_encodings, known_names
-                        )
-                        if name != "未知":
-                            color = (19, 161, 14)
-                            results.append((name, rec_conf, (x1, y1, x2, y2, det_conf)))
-                        else:
-                            results.append(("未知", 0.0, (x1, y1, x2, y2, det_conf)))
-                    except Exception:
-                        results.append(("未知", 0.0, (x1, y1, x2, y2, det_conf)))
+            for tf in tracked_faces:
+                x1, y1, x2, y2 = tf['bbox']
+                name = tf['name']
+                conf = tf['conf']
+                is_confirmed = tf['is_confirmed']
+
+                # 颜色：已确认=绿色，未确认=蓝色，未知=灰色
+                if is_confirmed:
+                    color = (19, 161, 14)   # 绿色 — 确认身份
+                elif name != "未知":
+                    color = (0, 120, 215)   # 蓝色 — 识别中
                 else:
-                    results.append(("未知", 0.0, (x1, y1, x2, y2, det_conf)))
-                
+                    color = (128, 128, 128) # 灰色 — 未知
+
                 cv2.rectangle(display, (x1, y1), (x2, y2), color, 2)
-                label = f"{name}" if name != "未知" else "?"
-                if name != "未知" and color == (19, 161, 14):
-                    label += f" {rec_conf:.0%}"
-                
+
+                # 标签
+                if is_confirmed:
+                    label = f"{name} {conf:.0%}"
+                elif name != "未知":
+                    label = f"{name}?"
+                else:
+                    label = "?"
+
                 (tw, th), baseline = cv2.getTextSize(
                     label, cv2.FONT_HERSHEY_DUPLEX, 0.55, 1
                 )
@@ -715,22 +821,22 @@ class ProcessingThread(QThread):
                 cv2.rectangle(display, (x1, label_y1), (x1 + tw + 8, y1), color, -1)
                 cv2.putText(display, label, (x1 + 4, y1 - 4),
                            cv2.FONT_HERSHEY_DUPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
-            
+
+                results.append((name, conf, (x1, y1, x2, y2, 0.0), is_confirmed))
+
             self._latest_results = results
-            
+
+            # ── FPS 统计 ──
             frame_count += 1
             now = time.time()
             if now - fps_timer >= 1.0:
                 self._latest_fps = frame_count / (now - fps_timer)
                 frame_count = 0
                 fps_timer = now
-            
+
             self.frame_updated.emit(display, results, self._latest_fps)
-            
-            elapsed = time.time() - loop_start
-            sleep_time = self._interval - elapsed
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+
+            last_process_time = time.time()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1029,16 +1135,20 @@ class FaceVisionApp(QMainWindow):
     
     @pyqtSlot(np.ndarray, list, float)
     def _on_frame_updated(self, frame, results, fps):
-        """处理线程发来的新帧"""
+        """处理线程发来的新帧（result 格式已包含 is_confirmed 标记）"""
         self._current_fps = fps
-        self.fps_label.setText(f"FPS: {fps:.0f}")
+        self.fps_label.setText(f"ML FPS: {fps:.0f}")
         self._show_frame(frame)
-        
+
         if results:
             lines = []
-            for name, conf, _ in results:
-                if name != "未知":
+            for item in results:
+                name, conf = item[0], item[1]
+                is_confirmed = item[3] if len(item) > 3 else (name != "未知")
+                if is_confirmed and name != "未知":
                     lines.append(f"✓ {name}  {conf:.0%}")
+                elif name != "未知":
+                    lines.append(f"⟳ {name}? 识别中…")
                 else:
                     lines.append("? 未知人员")
             color = "#1A1A1A" if not self.is_dark else "#FFFFFF"
@@ -1186,109 +1296,130 @@ class FaceVisionApp(QMainWindow):
             self._do_capture(name)
     
     def _do_capture(self, name):
-        """实际多帧采集（保持原有逻辑）"""
+        """实际多帧采集（带质量优选）"""
         self._set_status("⏳ 正在采集人脸，请保持不动…", "#0078D4")
-        
+
         frame = self.camera.get_frame()
         if frame is None:
+            print("[_do_capture] ❌ get_frame() 返回 None!")
             self._set_status("✗ 获取画面失败", "#C42B1C")
             self._resume_processing()
             return
-        
-        faces = self.detector.detect_with_embeddings(frame)
+
+        print(f"[_do_capture] 帧shape={frame.shape}, dtype={frame.dtype}")
+
+        faces = self.detector.detect(frame)  # 只用检测，不做 embedding
+        print(f"[_do_capture] detect() 返回 {len(faces)} 个人脸, "
+              f"confidence阈值={self.detector.confidence:.2f}")
         if len(faces) == 0:
             self._set_status("✗ 未检测到人脸", "#C42B1C")
             QMessageBox.warning(self, "未检测到", "画面中未检测到清晰人脸。")
             self._resume_processing()
             return
-        
+
         if len(faces) == 1:
             target_idx = 0
         else:
-            selector = SelectFaceDialogPyQt(self, frame, faces, name)
+            # 构建临时 faces 列表给选择对话框（兼容旧格式）
+            temp_faces = [(x1, y1, x2, y2, conf, None) for (x1, y1, x2, y2, conf) in faces]
+            selector = SelectFaceDialogPyQt(self, frame, temp_faces, name)
             if selector.exec_() != QDialog.Accepted:
                 self._set_status("● 已取消", "#888888")
+                self._resume_processing()
                 return
             target_idx = selector.get_result()
             if target_idx is None:
                 self._set_status("● 已取消", "#888888")
+                self._resume_processing()
                 return
-        
-        x1, y1, x2, y2, _, _ = faces[target_idx]
+
+        x1, y1, x2, y2, _ = faces[target_idx]
         cx = (x1 + x2) / 2
         cy = (y1 + y2) / 2
-        
+
         self._set_status("⏳ 正在采集多帧，请保持不动…", "#0078D4")
-        
-        encodings = []
-        best_roi = None
-        
+
+        # ── 多帧采集 + 质量评分 ──
+        candidates = []  # [(embedding, roi, blur_score)]
+
         for i in range(15):
             frame = self.camera.get_frame()
             if frame is None:
                 continue
-            
+
             current_faces = self.detector.detect_with_embeddings(frame)
             if len(current_faces) == 0:
                 continue
-            
+
             min_dist = float('inf')
             matched = None
             for f in current_faces:
-                fx1, fy1, fx2, fy2, _, emb = f
+                fx1, fy1, fx2, fy2, det_conf, emb, quality_pass = f
                 f_cx = (fx1 + fx2) / 2
                 f_cy = (fy1 + fy2) / 2
                 dist = (f_cx - cx) ** 2 + (f_cy - cy) ** 2
                 if dist < min_dist and dist < (frame.shape[1] * 0.2) ** 2:
                     min_dist = dist
                     matched = f
-            
+
             if matched is None:
                 continue
-            
-            x1, y1, x2, y2, det_conf, embedding = matched
-            if embedding is not None:
-                encodings.append(embedding)
-                roi = self.detector.extract_face_roi(
-                    frame, (x1, y1, x2, y2, det_conf)
-                )
-                if best_roi is None or roi.size > best_roi.size:
-                    best_roi = roi
-        
-        if len(encodings) < 3:
+
+            mx1, my1, mx2, my2, mdet_conf, membedding, mquality = matched
+            if membedding is None:
+                continue
+
+            # 计算人脸 ROI 清晰度
+            roi = self.detector.extract_face_roi(
+                frame, (mx1, my1, mx2, my2, mdet_conf)
+            )
+            if roi.size == 0:
+                continue
+
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+            candidates.append((membedding, roi, blur_score))
+
+        if len(candidates) < 3:
             self._set_status("✗ 采集失败，请正对摄像头", "#C42B1C")
             QMessageBox.warning(
                 self, "采集失败",
-                f"仅采集到 {len(encodings)}/3 帧有效人脸，请正对摄像头保持不动。"
+                f"仅采集到 {len(candidates)}/3 帧有效人脸，请正对摄像头保持不动。"
             )
             self._resume_processing()
             return
-        
-        enc_stack = np.stack(encodings)
+
+        # ── 质量优选：取前 2/3 最清晰的帧做 median ──
+        candidates.sort(key=lambda x: x[2], reverse=True)  # 按清晰度降序
+        top_n = max(3, int(len(candidates) * 0.67))
+        best_candidates = candidates[:top_n]
+
+        enc_stack = np.stack([c[0] for c in best_candidates])
         encoding = np.median(enc_stack, axis=0)
         encoding = encoding / (np.linalg.norm(encoding) + 1e-8)
-        
-        if best_roi is None:
-            self._set_status("✗ 编码失败", "#C42B1C")
-            self._resume_processing()
-            return
-        
+
+        # 选最清晰的 ROI 保存
+        best_roi = best_candidates[0][1]  # 已按清晰度排序，第一个就是最清晰的
+
         filename = f"{name}_{uuid.uuid4().hex[:8]}.jpg"
         img_path = self.face_photos_dir / filename
         cv2.imwrite(str(img_path), best_roi)
-        
+
         success, msg = self.db.add_person(name, str(img_path), encoding)
         if success:
+            # 编码缓存重建
+            known_encodings, known_names = self.db.get_encodings_and_names()
+            self.recognizer.update_cache(known_encodings, known_names, self.db.version)
             self._refresh_person_list()
             self._set_status(f"✓ {msg}", "#107C10")
         else:
             QMessageBox.warning(self, "添加失败", msg)
             self._set_status("● 就绪", "#888888")
-        
+
         self._resume_processing()
     
     def _add_from_image(self, name, file_path):
-        """从图片文件注册（保持原有逻辑）"""
+        """从图片文件注册（适配新 detect_with_embeddings 7元素格式）"""
         try:
             img = cv2.imread(file_path)
             if img is None:
@@ -1298,7 +1429,7 @@ class FaceVisionApp(QMainWindow):
             if len(faces) == 0:
                 QMessageBox.warning(self, "未检测到人脸", "所选图片中未检测到清晰人脸。")
                 return
-            
+
             if len(faces) == 1:
                 target_idx = 0
             else:
@@ -1308,21 +1439,25 @@ class FaceVisionApp(QMainWindow):
                 target_idx = selector.get_result()
                 if target_idx is None:
                     return
-            
+
             best = faces[target_idx]
-            x1, y1, x2, y2, det_conf, embedding = best
+            x1, y1, x2, y2, det_conf = best[0], best[1], best[2], best[3], best[4]
+            embedding = best[5]  # 第6个元素（索引5）是 embedding
             if embedding is None:
                 QMessageBox.warning(self, "编码失败", "无法提取人脸特征。")
                 return
-            
+
             ext = Path(file_path).suffix
             filename = f"{name}_{uuid.uuid4().hex[:8]}{ext}"
             dest_path = self.face_photos_dir / filename
             roi = self.detector.extract_face_roi(img, (x1, y1, x2, y2, det_conf))
             cv2.imwrite(str(dest_path), roi)
-            
+
             success, msg = self.db.add_person(name, str(dest_path), embedding)
             if success:
+                # 编码缓存重建
+                known_encodings, known_names = self.db.get_encodings_and_names()
+                self.recognizer.update_cache(known_encodings, known_names, self.db.version)
                 self._refresh_person_list()
                 self._set_status(f"✓ {msg}", "#107C10")
             else:
@@ -1716,8 +1851,8 @@ class SettingsDialogPyQt(GlassDialog):
     def __init__(self, parent=None):
         super().__init__(parent, "设置", parent.is_dark if parent else False)
         self.parent_app = parent
-        self.setMinimumSize(560, 600)
-        self.resize(560, 620)
+        self.setMinimumSize(560, 780)
+        self.resize(560, 800)
         
         layout = QVBoxLayout()
         layout.setContentsMargins(28, 24, 28, 24)
@@ -1743,25 +1878,32 @@ class SettingsDialogPyQt(GlassDialog):
         
         self.device_var = "cuda" if APP_SETTINGS.get("device") == "cuda" else "cpu"
         gpu_available = False
+        gpu_label = "GPU"
         try:
-            gpu_available = 'DmlExecutionProvider' in onnxruntime.get_available_providers()
+            available = onnxruntime.get_available_providers()
+            if 'CUDAExecutionProvider' in available:
+                gpu_available = True
+                gpu_label = "GPU (CUDA)"
+            elif 'DmlExecutionProvider' in available:
+                gpu_available = True
+                gpu_label = "GPU (DirectML)"
         except Exception:
             gpu_available = False
-        
+
         device_frame = QWidget()
         device_frame.setAttribute(Qt.WA_TranslucentBackground)
         device_layout = QHBoxLayout(device_frame)
         device_layout.setContentsMargins(0, 0, 0, 0)
         device_layout.setSpacing(12)
-        
+
         self.btn_cpu = QPushButton("CPU")
         self.btn_cpu.setMinimumWidth(180)
         self.btn_cpu.setFixedHeight(38)
         self.btn_cpu.setCursor(Qt.PointingHandCursor)
         self.btn_cpu.clicked.connect(lambda: self._on_device_change("cpu"))
         device_layout.addWidget(self.btn_cpu)
-        
-        self.btn_gpu = QPushButton("GPU (DirectML)" if gpu_available else "GPU (不可用)")
+
+        self.btn_gpu = QPushButton(gpu_label if gpu_available else "GPU (不可用)")
         self.btn_gpu.setMinimumWidth(180)
         self.btn_gpu.setFixedHeight(38)
         self.btn_gpu.setCursor(Qt.PointingHandCursor)
@@ -1782,10 +1924,10 @@ class SettingsDialogPyQt(GlassDialog):
         conf_layout.setContentsMargins(0, 0, 0, 0)
         
         self.conf_slider = QSlider(Qt.Horizontal)
-        self.conf_slider.setMinimum(15)
-        self.conf_slider.setMaximum(70)
+        self.conf_slider.setMinimum(30)
+        self.conf_slider.setMaximum(80)
         self.conf_slider.setSingleStep(1)
-        self.conf_slider.setValue(int(APP_SETTINGS.get("confidence", 0.25) * 100))
+        self.conf_slider.setValue(int(APP_SETTINGS.get("confidence", 0.50) * 100))
         self.conf_slider.valueChanged.connect(self._update_conf_label)
         conf_layout.addWidget(self.conf_slider, 1)
         
@@ -1837,7 +1979,7 @@ class SettingsDialogPyQt(GlassDialog):
         
         self.fps_slider = QSlider(Qt.Horizontal)
         self.fps_slider.setMinimum(5)
-        self.fps_slider.setMaximum(25)
+        self.fps_slider.setMaximum(60)
         self.fps_slider.setSingleStep(1)
         self.fps_slider.setValue(int(APP_SETTINGS.get("proc_fps", 12)))
         self.fps_slider.valueChanged.connect(self._update_fps_label)
@@ -1853,7 +1995,83 @@ class SettingsDialogPyQt(GlassDialog):
         )
         fps_layout.addWidget(self.fps_label_w)
         layout.addWidget(fps_row)
-        
+
+        # ── 检测模型尺寸 ──
+        self._add_section_label(layout, "检测模型尺寸 (越小越快)")
+
+        det_size_row = QWidget()
+        det_size_row.setAttribute(Qt.WA_TranslucentBackground)
+        det_size_layout = QHBoxLayout(det_size_row)
+        det_size_layout.setContentsMargins(0, 0, 0, 0)
+        det_size_layout.setSpacing(8)
+
+        self.det_size_combo = QComboBox()
+        self.det_size_combo.addItems(["320 (快速)", "480 (均衡)", "640 (精准)"])
+        current_det = APP_SETTINGS.get("det_size", 480)
+        if current_det == 320:
+            self.det_size_combo.setCurrentIndex(0)
+        elif current_det == 640:
+            self.det_size_combo.setCurrentIndex(2)
+        else:
+            self.det_size_combo.setCurrentIndex(1)
+        det_size_layout.addWidget(self.det_size_combo)
+
+        det_note = QLabel("需重启程序生效")
+        det_note.setStyleSheet("color: #888888; font-size: 11px; background: transparent;")
+        det_size_layout.addWidget(det_note)
+        det_size_layout.addStretch()
+        layout.addWidget(det_size_row)
+
+        # ── 追踪平滑帧数 ──
+        self._add_section_label(layout, "追踪平滑帧数")
+
+        smooth_row = QWidget()
+        smooth_row.setAttribute(Qt.WA_TranslucentBackground)
+        smooth_layout = QHBoxLayout(smooth_row)
+        smooth_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.smooth_slider = QSlider(Qt.Horizontal)
+        self.smooth_slider.setMinimum(3)
+        self.smooth_slider.setMaximum(10)
+        self.smooth_slider.setSingleStep(1)
+        self.smooth_slider.setValue(int(APP_SETTINGS.get("track_smooth", 5)))
+        self.smooth_slider.valueChanged.connect(
+            lambda v: self.smooth_label.setText(f"{v} 帧"))
+        smooth_layout.addWidget(self.smooth_slider, 1)
+
+        self.smooth_label = QLabel(f"{APP_SETTINGS.get('track_smooth', 5)} 帧")
+        self.smooth_label.setFixedWidth(50)
+        self.smooth_label.setAlignment(Qt.AlignCenter)
+        self.smooth_label.setStyleSheet(
+            "color: #1A1A1A; font-size: 15px; font-weight: bold; background: transparent;"
+            if not self.is_dark else
+            "color: #FFFFFF; font-size: 15px; font-weight: bold; background: transparent;"
+        )
+        smooth_layout.addWidget(self.smooth_label)
+        layout.addWidget(smooth_row)
+
+        # ── 质量过滤 ──
+        self._add_section_label(layout, "质量过滤")
+
+        qf_row = QWidget()
+        qf_row.setAttribute(Qt.WA_TranslucentBackground)
+        qf_layout = QHBoxLayout(qf_row)
+        qf_layout.setContentsMargins(0, 0, 0, 0)
+        qf_layout.setSpacing(12)
+
+        self.qf_check = QCheckBox("启用模糊度过滤")
+        self.qf_check.setChecked(APP_SETTINGS.get("quality_filter", True))
+        qf_layout.addWidget(self.qf_check)
+
+        self.minface_combo = QComboBox()
+        self.minface_combo.addItems(["最小 60px", "最小 80px", "最小 100px", "最小 120px"])
+        current_min = APP_SETTINGS.get("min_face_size", 80)
+        minface_map = {60: 0, 80: 1, 100: 2, 120: 3}
+        self.minface_combo.setCurrentIndex(minface_map.get(current_min, 1))
+        qf_layout.addWidget(self.minface_combo)
+        qf_layout.addStretch()
+        layout.addWidget(qf_row)
+
         # ── 摄像头分辨率 ──
         self._add_section_label(layout, "摄像头分辨率")
         
@@ -1937,45 +2155,67 @@ class SettingsDialogPyQt(GlassDialog):
         new_conf = self.conf_slider.value() / 100.0
         new_tol = self.tol_slider.value() / 100.0
         new_fps = self.fps_slider.value()
+        new_smooth = self.smooth_slider.value()
         new_res_str = self.res_combo.currentText()
         new_w, new_h = _res_to_tuple(new_res_str)
-        
+
+        # 检测尺寸
+        det_size_map = {0: 320, 1: 480, 2: 640}
+        new_det_size = det_size_map[self.det_size_combo.currentIndex()]
+
+        # 质量过滤
+        new_quality = self.qf_check.isChecked()
+        minface_map = {0: 60, 1: 80, 2: 100, 3: 120}
+        new_minface = minface_map[self.minface_combo.currentIndex()]
+
         old_device = APP_SETTINGS.get("device", "cpu")
         old_w = APP_SETTINGS.get("cam_width", 640)
         old_h = APP_SETTINGS.get("cam_height", 360)
-        
+        old_det_size = APP_SETTINGS.get("det_size", 480)
+
         # 更新全局设置
         APP_SETTINGS["device"] = new_device
         APP_SETTINGS["confidence"] = float(new_conf)
         APP_SETTINGS["tolerance"] = float(new_tol)
         APP_SETTINGS["proc_fps"] = new_fps
+        APP_SETTINGS["track_smooth"] = new_smooth
+        APP_SETTINGS["det_size"] = new_det_size
         APP_SETTINGS["cam_width"] = new_w
         APP_SETTINGS["cam_height"] = new_h
-        
+        APP_SETTINGS["quality_filter"] = new_quality
+        APP_SETTINGS["min_face_size"] = new_minface
+
         save_settings(APP_SETTINGS)
-        
+
         # 即时生效：更新检测器和识别器参数
         if self.parent_app:
             self.parent_app.detector.confidence = float(new_conf)
+            self.parent_app.detector.quality_filter = new_quality
+            self.parent_app.detector.min_face_size = new_minface
             self.parent_app.recognizer.tolerance = float(new_tol)
-            
+
             if self.parent_app.processing:
-                self.parent_app.processing._interval = 1.0 / max(1, new_fps)
-        
+                self.parent_app.processing._interval = 1.0 / new_fps if new_fps > 0 else 0
+                if hasattr(self.parent_app.processing, 'tracker'):
+                    self.parent_app.processing.tracker.smooth_frames = new_smooth
+
         messages = []
-        
+
         if new_w != old_w or new_h != old_h:
             messages.append(f"摄像头分辨率已设为 {new_w}×{new_h}")
-        
+
+        if new_det_size != old_det_size:
+            messages.append(f"检测模型尺寸已设为 {new_det_size}（重启后生效）")
+
         if new_device != old_device:
             messages.append(f"设备已切换为 {new_device.upper()}")
-        
+
         if new_device != old_device or new_w != old_w or new_h != old_h:
-            messages.append("请重启程序使更改生效。")
-        
+            messages.append("请重启程序使摄像头/设备更改生效。")
+
         if messages:
             QMessageBox.information(self, "设置已保存", "\n".join(messages))
-        
+
         self.accept()
 
 
