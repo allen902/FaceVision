@@ -211,6 +211,13 @@ facevision_py/
 
 ---
 
+
+## 致谢
+- 特别感谢 Leon Jane 为本程序的功能测试提供其人脸支持。
+
+---
+
+
 ## 📄 许可证
 
 MIT License — 详见 [LICENSE](LICENSE) 文件。
