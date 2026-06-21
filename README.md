@@ -1,4 +1,8 @@
-# FaceVision — 实时人脸识别系统
+# FaceVision — Real-Time Face Recognition System
+
+<p align="center">
+  <strong>English</strong> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9%2B-blue" alt="Python 3.9+"/>
@@ -10,70 +14,70 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"/>
 </p>
 
-> 基于 `insightface` 和 `PyQt6` 的 Windows 实时人脸识别系统，深色 Windows 11 Mica 玻璃态 UI，支持 DirectML GPU 加速。
+> A Windows real-time face recognition system powered by `insightface` and `PyQt6`, featuring a dark Windows 11 Mica glassmorphism UI with DirectML GPU acceleration.
 
 <p align="center">
-  <img src="pic/image1.png" alt="FaceVision 主界面" width="80%"/>
+  <img src="pic/image1.png" alt="FaceVision Main Window" width="80%"/>
 </p>
 
 ---
 
-## 📋 目录
+## 📋 Table of Contents
 
-- [功能特性](#-功能特性)
-- [技术栈](#-技术栈)
-- [环境要求](#-环境要求)
-- [安装指南](#-安装指南)
-- [快速开始](#-快速开始)
-- [主要功能](#-主要功能)
-- [配置文件说明](#-配置文件说明)
-- [项目结构](#-项目结构)
-- [常见问题](#-常见问题)
-
----
-
-## ✨ 功能特性
-
-- 实时摄像头人脸检测与识别
-- `insightface` `buffalo_l` 模型 (RetinaFace + ArcFace)
-- 512 维归一化特征向量 + 余弦相似度 1:N 匹配
-- **时序追踪** — IoU 多目标追踪 + 滑动窗口身份投票，消除闪烁
-- **质量过滤** — 模糊度检测 + 最小人脸尺寸过滤
-- DirectML GPU 加速，GPU 不可用时自动回退 CPU
-- 多帧注册 (15 帧 + 清晰度优选 + 中位数融合)
-- 本地图片导入并选择目标人脸注册
-- **PyQt6 深色仪表盘 UI** — Windows 11 Mica 背景 · 纯黑风格 · 全局白色字体
-- **无边框窗口** — 自定义标题栏拖动 · 最小化/关闭按钮
-- **可滚动设置面板** — 10 项可调参数，即时生效
-- UI 与 ML 推理线程完全分离，流畅不卡顿
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [How It Works](#-how-it-works)
+- [Configuration](#-configuration)
+- [Project Structure](#-project-structure)
+- [FAQ](#-faq)
 
 ---
 
-## 🛠 技术栈
+## ✨ Features
 
-| 组件 | 技术 |
-|------|------|
-| **编程语言** | Python 3.9+ |
-| **GUI 框架** | PyQt6 + Windows 11 Mica |
-| **人脸检测** | InsightFace RetinaFace |
-| **特征提取** | ArcFace (512 维嵌入) |
-| **相似度计算** | 余弦相似度 (1:N) |
-| **时序追踪** | IoU + 滑动窗口投票 |
-| **推理后端** | ONNX Runtime (DirectML / CPU) |
-| **图像处理** | OpenCV、Pillow |
-| **数字计算** | NumPy |
+- Real-time camera face detection and recognition
+- `insightface` `buffalo_l` model (RetinaFace + ArcFace)
+- 512-d normalized feature vectors + cosine similarity 1:N matching
+- **Temporal Tracking** — IoU multi-object tracking + sliding-window identity voting to eliminate flicker
+- **Quality Filtering** — blur detection + minimum face size filtering
+- DirectML GPU acceleration with automatic CPU fallback
+- Multi-frame registration (15 frames + sharpness ranking + median fusion)
+- Local image import with target face selection for registration
+- **PyQt6 Dark Dashboard UI** — Windows 11 Mica backdrop · pure dark palette · global white typography
+- **Frameless Window** — custom title bar with drag · minimize/close buttons
+- **Scrollable Settings Panel** — 10 adjustable parameters with instant effect
+- Fully decoupled UI and ML inference threads for smooth performance
 
 ---
 
-## 💻 环境要求
+## 🛠 Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Language** | Python 3.9+ |
+| **GUI Framework** | PyQt6 + Windows 11 Mica |
+| **Face Detection** | InsightFace RetinaFace |
+| **Feature Extraction** | ArcFace (512-d embeddings) |
+| **Similarity** | Cosine Similarity (1:N) |
+| **Temporal Tracking** | IoU + Sliding-Window Voting |
+| **Inference Backend** | ONNX Runtime (DirectML / CPU) |
+| **Image Processing** | OpenCV, Pillow |
+| **Numerical Compute** | NumPy |
+
+---
+
+## 💻 Requirements
 
 - Windows 10 / Windows 11
-- Python 3.9 或更高
-- USB 或内置摄像头
+- Python 3.9 or later
+- USB or built-in webcam
 
 ---
 
-## 📦 安装指南
+## 📦 Installation
 
 ```bash
 git clone https://github.com/allen902/FaceVision.git
@@ -83,7 +87,7 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-### 可选：安装 DirectML GPU 支持
+### Optional: Install DirectML GPU Support
 
 ```bash
 pip uninstall onnxruntime onnxruntime-directml -y
@@ -92,66 +96,66 @@ pip install onnxruntime-directml==1.24.0
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
 ```bash
 python main.py
 ```
 
-1. 点击 `启动摄像头`
-2. 点击 `添加人员`，输入姓名并正对摄像头注册
-3. 或点击 `从图片`，选择本地照片注册人脸
-4. 已注册人员出现时，画面中显示姓名与置信度
+1. Click **Start Camera**
+2. Click **Add Person**, enter a name, and face the camera to register
+3. Or click **From Image** to register a face from a local photo
+4. When a registered person appears, their name and confidence score are shown on screen
 
 ---
 
-## 🔧 主要功能
+## 🔧 How It Works
 
-### 人脸检测
+### Face Detection
 
-- `face_detector.py` 使用 `insightface.app.FaceAnalysis(name='buffalo_l')`
-- 单次推理同时获得检测框 + 置信度 + 512d 特征向量
-- `confidence` 阈值 + `quality_filter` 模糊过滤 + `min_face_size` 尺寸过滤
+- `face_detector.py` uses `insightface.app.FaceAnalysis(name='buffalo_l')`
+- A single inference pass yields bounding boxes + confidence scores + 512-d feature vectors
+- Filtered by `confidence` threshold + `quality_filter` (blur check) + `min_face_size`
 
-### 人脸识别
+### Face Recognition
 
-- `face_recognizer.py` 余弦相似度 1:N 匹配
-- 内置编码缓存 + 版本号机制，避免重复重建
+- `face_recognizer.py` performs cosine similarity 1:N matching
+- Built-in encoding cache with versioning to avoid redundant rebuilds
 
-### 时序追踪
+### Temporal Tracking
 
-- `face_tracker.py` IoU 匹配 + 滑动窗口身份投票
-- `track_smooth` 帧内多数投票一致才确认身份，避免闪烁
+- `face_tracker.py` uses IoU matching + sliding-window identity voting
+- Identity is confirmed only when majority voting holds over `track_smooth` frames, eliminating flicker
 
-### 人员注册
+### Person Registration
 
-- 实时注册：15 帧采集 → 清晰度排序 → 取前 2/3 中位数融合
-- 图片导入：支持本地图片注册，多张人脸可点选目标
-- 数据保存：`face_db.json` + `encodings.pkl` + `face_photos/`
+- Live registration: 15-frame capture → sharpness ranking → median fusion of the top 2/3
+- Image import: supports local photo registration with click-to-select for multiple faces
+- Data storage: `face_db.json` + `encodings.pkl` + `face_photos/`
 
-### 参数设置 (10 项)
+### Settings (10 Parameters)
 
-| 设置项 | 类型 | 范围 | 说明 |
-|--------|------|------|------|
-| 推理设备 | 按钮切换 | CPU / GPU | DirectML / CUDA 自动检测 |
-| 摄像头分辨率 | 下拉框 | 8 档 | 320×240 ~ 1280×720 |
-| 检测置信度 | 滑块 | 0.30 ~ 0.80 | RetinaFace 检测阈值 |
-| 识别容差 | 滑块 | 0.30 ~ 0.80 | 余弦相似度阈值 |
-| 处理帧率 | 滑块 | 5 ~ 60 | ML 推理帧率上限 |
-| 检测模型尺寸 | 下拉框 | 320 / 480 / 640 | 越小越快 |
-| 追踪平滑帧数 | 滑块 | 3 ~ 10 | 身份确认所需连续帧数 |
-| 质量过滤 | 复选框 | 开/关 | 模糊度检测 |
-| 最小人脸尺寸 | 下拉框 | 60 / 80 / 100 / 120 px | 小于此值过滤 |
+| Setting | Type | Range | Description |
+|---------|------|-------|-------------|
+| Inference Device | Toggle | CPU / GPU | Auto-detect DirectML / CUDA |
+| Camera Resolution | Dropdown | 8 options | 320×240 ~ 1280×720 |
+| Detection Confidence | Slider | 0.30 ~ 0.80 | RetinaFace detection threshold |
+| Recognition Tolerance | Slider | 0.30 ~ 0.80 | Cosine similarity threshold |
+| Processing FPS | Slider | 5 ~ 60 | ML inference frame rate cap |
+| Detection Model Size | Dropdown | 320 / 480 / 640 | Smaller = faster |
+| Tracking Smooth Frames | Slider | 3 ~ 10 | Consecutive frames needed to confirm identity |
+| Quality Filter | Checkbox | On / Off | Blur detection |
+| Min Face Size | Dropdown | 60 / 80 / 100 / 120 px | Faces smaller than this are ignored |
 
 <p align="center">
-  <img src="pic/image2.png" alt="FaceVision 设置界面" width="80%"/>
+  <img src="pic/image2.png" alt="FaceVision Settings Window" width="80%"/>
 </p>
 
 ---
 
-## ⚙ 配置文件说明
+## ⚙ Configuration
 
-程序自动生成 `settings.json`：
+`settings.json` is auto-generated by the application:
 
 ```json
 {
@@ -169,57 +173,56 @@ python main.py
 }
 ```
 
-运行时生成：
+Runtime-generated files:
 
-- `face_db.json` — 已注册人员信息
-- `encodings.pkl` — 人脸特征向量
-- `face_photos/` — 注册人脸截图
+- `face_db.json` — registered person records
+- `encodings.pkl` — face feature vectors
+- `face_photos/` — registration face snapshots
 
 ---
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```text
 facevision_py/
-├── main.py                # 程序入口
-├── config.py              # 配置管理 (settings.json)
-├── camera.py              # 摄像头采集线程
-├── face_detector.py       # 人脸检测 + 特征提取
-├── face_recognizer.py     # 人脸识别 (余弦相似度)
-├── face_database.py       # 数据持久化 (JSON + pickle)
-├── face_tracker.py        # 时序追踪 (IoU + 投票)
-├── ui_pyqt6.py            # ★ PyQt6 深色 UI (当前主界面)
-├── ui_pyqt.py             # PyQt5 旧版 UI (保留参考)
-├── requirements.txt       # Python 依赖
-├── CLAUDE.md              # AI Agent 上下文指南
-├── README.md              # 项目说明
-├── settings.json          # 运行时配置 (自动生成)
-├── face_db.json           # 人员数据库 (自动生成)
-├── encodings.pkl          # 特征向量 (自动生成)
-└── face_photos/           # 注册照片 (自动生成)
+├── main.py                # Application entry point
+├── config.py              # Configuration manager (settings.json)
+├── camera.py              # Camera capture thread
+├── face_detector.py       # Face detection + feature extraction
+├── face_recognizer.py     # Face recognition (cosine similarity)
+├── face_database.py       # Data persistence (JSON + pickle)
+├── face_tracker.py        # Temporal tracking (IoU + voting)
+├── ui_pyqt6.py            # ★ PyQt6 dark UI (current main interface)
+├── ui_pyqt.py             # Legacy PyQt5 UI (kept for reference)
+├── requirements.txt       # Python dependencies
+├── CLAUDE.md              # AI Agent context guide
+├── README.md              # Project documentation
+├── settings.json          # Runtime config (auto-generated)
+├── face_db.json           # Person database (auto-generated)
+├── encodings.pkl          # Feature vectors (auto-generated)
+└── face_photos/           # Registration photos (auto-generated)
 ```
 
 ---
 
-## ❓ 常见问题
+## ❓ FAQ
 
-- **未检测到摄像头** — 确认摄像头已连接并允许访问
-- **GPU 按钮不可用** — 安装 `onnxruntime-directml` 或改用 CPU
-- **注册失败** — 正对摄像头保持不动，避免遮挡和快速移动
-- **识别为"未知"** — 降低 `tolerance` 或重新注册更清晰的样本
-- **下拉框空白** — 已修复，QComboBox 弹出列表需独立设置 QSS
-
----
-
-
-## 致谢
-- 特别感谢 Leon Jane 为本程序的功能测试提供其人脸支持。
+- **No camera detected** — Ensure your webcam is connected and allowed in privacy settings
+- **GPU toggle unavailable** — Install `onnxruntime-directml` or fall back to CPU
+- **Registration fails** — Face the camera squarely, stay still, and avoid occlusion or rapid movement
+- **Recognized as "Unknown"** — Lower the `tolerance` value or re-register with clearer samples
+- **Dropdown appears blank** — Fixed; QComboBox popup lists require independent QSS styling
 
 ---
 
+## 🙏 Acknowledgments
 
-## 📄 许可证
+- Special thanks to **Leon Jane** for providing facial support during functional testing of this application.
 
-MIT License — 详见 [LICENSE](LICENSE) 文件。
+---
+
+## 📄 License
+
+MIT License — see the [LICENSE](LICENSE) file for details.
 
 Copyright (c) 2026 [Allen](https://github.com/allen902)
