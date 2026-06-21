@@ -35,9 +35,12 @@ from face_detector import FaceDetector
 from face_recognizer import FaceRecognizer
 from camera import CameraThread
 from config import APP_SETTINGS
+from i18n import init_language
 
 
 def main():
+    # 初始化语言设置（必须在 UI 创建之前）
+    init_language()
     
     print("=" * 50)
     print("  FaceVision — 实时人脸识别系统")
@@ -74,9 +77,10 @@ def main():
     print("[4/4] 初始化摄像头…")
     cameras = CameraThread.list_cameras()
     if not cameras:
-        print("⚠ 未检测到可用摄像头！")
-        print("  请检查摄像头是否已连接，然后重新启动程序。")
-        input("按 Enter 退出…")
+        from i18n import tr
+        print(tr("console.no_camera_warn"))
+        print(tr("console.check_camera"))
+        input(tr("console.press_enter_to_exit"))
         sys.exit(1)
 
     print(f"  可用摄像头: {cameras}")

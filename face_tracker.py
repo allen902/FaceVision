@@ -12,6 +12,8 @@
 import numpy as np
 import logging
 
+from i18n import UNKNOWN_SENTINEL
+
 logger = logging.getLogger("FaceVision.tracker")
 
 
@@ -46,9 +48,9 @@ class FaceTrack:
         self.quality_history = []         # 对应帧的质量标记
         self.frames_since_update = 0      # 未匹配的连续帧数
         self.total_frames = 1             # 总追踪帧数
-        self.confirmed_name = "未知"       # 确认后的身份
+        self.confirmed_name = UNKNOWN_SENTINEL       # 确认后的身份
         self.confirmed_conf = 0.0         # 确认后的置信度
-        self.latest_name = "未知"          # 最新一帧的识别结果（用于显示）
+        self.latest_name = UNKNOWN_SENTINEL          # 最新一帧的识别结果（用于显示）
         self.latest_conf = 0.0            # 最新一帧的置信度
 
     def update(self, bbox, name, conf, quality_pass=True):
@@ -120,7 +122,7 @@ class FaceTrack:
             min_votes = total                   # 1-2帧：1票即可（初步判断）
 
         is_confirmed = (best_votes >= min_votes
-                        and best_name != "未知"
+                        and best_name != UNKNOWN_SENTINEL
                         and avg_conf >= 0.30)    # 额外：相似度必须 ≥ 0.30
 
         return best_name, avg_conf, is_confirmed
@@ -138,7 +140,7 @@ class FaceTrack:
             return name, conf, True
         else:
             # 未确认但已有识别结果：显示最新识别名
-            if self.latest_name != "未知":
+            if self.latest_name != UNKNOWN_SENTINEL:
                 return self.latest_name, self.latest_conf, False
             return self.latest_name, 0.0, False
 
@@ -174,7 +176,7 @@ class FaceTracker:
         recognized = []
         for det in detections:
             x1, y1, x2, y2, det_conf, embedding, quality_pass = det
-            name, rec_conf = "未知", 0.0
+            name, rec_conf = UNKNOWN_SENTINEL, 0.0
             if embedding is not None and recognizer is not None:
                 try:
                     # 优先使用缓存（传 None 触发缓存路径）

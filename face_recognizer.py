@@ -7,6 +7,8 @@
 import numpy as np
 import logging
 
+from i18n import UNKNOWN_SENTINEL
+
 logger = logging.getLogger("FaceVision.recognizer")
 
 
@@ -75,10 +77,10 @@ class FaceRecognizer:
             encodings = self._cached_encodings
             names = self._cached_names
         else:
-            return "未知", 0.0
+            return UNKNOWN_SENTINEL, 0.0
 
         if unknown_encoding is None or len(names) == 0:
-            return "未知", 0.0
+            return UNKNOWN_SENTINEL, 0.0
 
         # 确保 unknown_encoding 是 float32 且 L2 归一化
         unknown_encoding = np.asarray(unknown_encoding, dtype=np.float32).ravel()
@@ -93,6 +95,6 @@ class FaceRecognizer:
         best_sim = float(similarities[best_idx])
 
         if best_sim < self.tolerance:
-            return "未知", 0.0
+            return UNKNOWN_SENTINEL, 0.0
 
         return names[best_idx], best_sim

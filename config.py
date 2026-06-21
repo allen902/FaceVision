@@ -7,6 +7,7 @@ import os
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
 
 DEFAULT_SETTINGS = {
+    "language": "zh",              # zh / en
     "device": "cuda",              # cpu / cuda
     "confidence": 0.50,            # 检测置信度阈值（提高以减少误检，RetinaFace 推荐 ≥0.45）
     "tolerance": 0.45,             # buffalo_l 余弦相似度阈值: 0.40=严格, 0.45=推荐, 0.50=宽松

@@ -33,6 +33,7 @@ from PyQt6.QtGui import (
 from face_database import FaceDatabase
 from face_tracker import FaceTracker
 from config import APP_SETTINGS, save_settings
+from i18n import tr, on_language_change, UNKNOWN_SENTINEL
 
 # ═══════════════════════════════════════════════════════════════
 # WinUI 3 设计令牌
@@ -173,11 +174,9 @@ class ProcessingThread(QObject):
 
                 if frame_count % 30 == 0:
                     n_valid = sum(1 for f in faces_with_emb if f[6])
-                    print(f"[ProcessingThread] 帧#{frame_count}: "
-                          f"检测到 {len(faces_with_emb)} 人脸, "
-                          f"{n_valid} 通过质量检查, "
-                          f"追踪数={self.tracker.track_count}, "
-                          f"帧shape={frame.shape}")
+                    print(tr("thread.debug_info", count=frame_count,
+                             n_faces=len(faces_with_emb), n_valid=n_valid,
+                             n_tracks=self.tracker.track_count, shape=frame.shape))
 
                 self.frame_ready.emit(frame, recognized, tracked_faces)
 
@@ -449,7 +448,11 @@ class GlassDialog(QDialog):
 class AddPersonDialogPyQt(GlassDialog):
     """添加人员对话框"""
 
-    def __init__(self, parent=None, title="添加人员", prompt="请输入人员姓名："):
+    def __init__(self, parent=None, title=None, prompt=None):
+        if title is None:
+            title = tr("dialog.add_person")
+        if prompt is None:
+            prompt = tr("prompt.enter_name_generic")
         super().__init__(parent, title)
         self.result = None
         self.setMinimumSize(380, 200)
@@ -466,7 +469,7 @@ class AddPersonDialogPyQt(GlassDialog):
         layout.addWidget(label)
 
         self.entry = QLineEdit()
-        self.entry.setPlaceholderText("输入姓名…")
+        self.entry.setPlaceholderText(tr("placeholder.input_name"))
         self.entry.setMinimumHeight(38)
         self.entry.returnPressed.connect(self._confirm)
         layout.addWidget(self.entry)
@@ -475,12 +478,12 @@ class AddPersonDialogPyQt(GlassDialog):
         btn_layout.setSpacing(12)
         btn_layout.addStretch()
 
-        cancel_btn = QPushButton("取消")
+        cancel_btn = QPushButton(tr("btn.cancel"))
         cancel_btn.setFixedSize(100, 38)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        confirm_btn = QPushButton("确认")
+        confirm_btn = QPushButton(tr("btn.confirm"))
         confirm_btn.setObjectName("btnAccent")
         confirm_btn.setFixedSize(100, 38)
         confirm_btn.clicked.connect(self._confirm)
@@ -496,7 +499,7 @@ class AddPersonDialogPyQt(GlassDialog):
             self.result = name
             self.accept()
         else:
-            QMessageBox.warning(self, "输入无效", "请输入有效的姓名。")
+            QMessageBox.warning(self, tr("dialog.input_invalid"), tr("prompt.enter_valid_name"))
 
     def get_result(self):
         return self.result
@@ -506,7 +509,7 @@ class BatchDeleteDialogPyQt(GlassDialog):
     """批量删除对话框"""
 
     def __init__(self, parent=None, names=None):
-        super().__init__(parent, "批量删除人员")
+        super().__init__(parent, tr("dialog.batch_delete"))
         self.result = []
         self.names = names or []
         self.setMinimumSize(400, 420)
@@ -516,7 +519,7 @@ class BatchDeleteDialogPyQt(GlassDialog):
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(12)
 
-        label = QLabel("勾选要删除的人员：")
+        label = QLabel(tr("prompt.select_to_delete"))
         label.setStyleSheet(
             "color: #FFFFFF; "
             f"font-size: 15px; font-weight: bold; background: transparent;"
@@ -524,12 +527,12 @@ class BatchDeleteDialogPyQt(GlassDialog):
         layout.addWidget(label)
 
         select_btn_layout = QHBoxLayout()
-        select_all = QPushButton("全选")
+        select_all = QPushButton(tr("btn.select_all"))
         select_all.setFixedSize(85, 32)
         select_all.clicked.connect(self._select_all)
         select_btn_layout.addWidget(select_all)
 
-        deselect_all = QPushButton("全不选")
+        deselect_all = QPushButton(tr("btn.deselect_all"))
         deselect_all.setFixedSize(85, 32)
         deselect_all.clicked.connect(self._deselect_all)
         select_btn_layout.addWidget(deselect_all)
@@ -559,12 +562,12 @@ class BatchDeleteDialogPyQt(GlassDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        cancel_btn = QPushButton("取消")
+        cancel_btn = QPushButton(tr("btn.cancel"))
         cancel_btn.setFixedSize(100, 38)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        delete_btn = QPushButton("删除选中")
+        delete_btn = QPushButton(tr("btn.delete_selected"))
         delete_btn.setObjectName("btnDanger")
         delete_btn.setFixedSize(120, 38)
         delete_btn.clicked.connect(self._confirm)
@@ -584,7 +587,7 @@ class BatchDeleteDialogPyQt(GlassDialog):
     def _confirm(self):
         selected = [name for name, cb in self.checkboxes.items() if cb.isChecked()]
         if not selected:
-            QMessageBox.warning(self, "未选择", "请至少选择一名人员。")
+            QMessageBox.warning(self, tr("dialog.no_selection"), tr("prompt.select_at_least_one"))
             return
         self.result = selected
         self.accept()
@@ -597,7 +600,7 @@ class SelectFaceDialogPyQt(GlassDialog):
     """多人脸选择对话框"""
 
     def __init__(self, parent=None, frame=None, faces=None, title_hint=""):
-        super().__init__(parent, "选择要注册的人脸")
+        super().__init__(parent, tr("dialog.select_face"))
         self.result = None
         self.frame = frame
         self.faces = faces or []
@@ -614,7 +617,7 @@ class SelectFaceDialogPyQt(GlassDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        label = QLabel("画面中有多张人脸，请点击要注册的人脸：")
+        label = QLabel(tr("prompt.multi_face"))
         label.setStyleSheet(
             "color: #FFFFFF; "
             f"font-size: 14px; background: transparent;"
@@ -676,7 +679,7 @@ class SelectFaceDialogPyQt(GlassDialog):
             img_label.setStyleSheet("border-radius: 6px; background: rgba(0,0,0,0.05);")
             card_layout.addWidget(img_label, 0, Qt.AlignmentFlag.AlignCenter)
 
-            text_label = QLabel(f"人脸 #{i+1}  ({det_conf:.0%})")
+            text_label = QLabel(tr("face.card_label", i=i+1, conf=det_conf))
             text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             text_label.setStyleSheet(
                 "color: #FFFFFF; font-size: 12px; background: transparent; padding-top: 4px;"
@@ -690,7 +693,7 @@ class SelectFaceDialogPyQt(GlassDialog):
         grid_layout.addStretch()
         layout.addWidget(grid_widget, 1)
 
-        cancel_btn = QPushButton("取消")
+        cancel_btn = QPushButton(tr("btn.cancel"))
         cancel_btn.setFixedSize(100, 38)
         cancel_btn.clicked.connect(self.reject)
 
@@ -741,14 +744,14 @@ def _current_resolution_key():
         w, h = _res_to_tuple(res)
         if w == cw and h == ch:
             return res
-    return f"{cw}×{ch} (自定义)"
+    return tr("resolution.custom", w=cw, h=ch)
 
 
 class SettingsDialogPyQt(GlassDialog):
     """设置对话框 — 应用全局样式表保持与主窗口风格统一"""
 
     def __init__(self, parent=None):
-        super().__init__(parent, "设置")
+        super().__init__(parent, tr("dialog.settings"))
         self.parent_app = parent
         self.setMinimumSize(580, 620)
         self.resize(580, 680)
@@ -759,7 +762,7 @@ class SettingsDialogPyQt(GlassDialog):
         outer.setSpacing(8)
 
         # ── 标题（固定顶部） ──
-        title = QLabel("⚙  FaceVision 设置")
+        title = QLabel(tr("dialog.settings_title"))
         title.setStyleSheet(
             "color: #FFFFFF; font-size: 18px; font-weight: bold; background: transparent;"
         )
@@ -783,8 +786,36 @@ class SettingsDialogPyQt(GlassDialog):
         layout.setContentsMargins(8, 8, 12, 8)
         layout.setSpacing(10)
 
+        # ── 语言切换 ──
+        from i18n import current_language
+        self._add_section_label(layout, tr("section.language"))
+
+        self.lang_var = current_language()
+
+        lang_frame = QWidget()
+        lang_layout = QHBoxLayout(lang_frame)
+        lang_layout.setContentsMargins(0, 0, 0, 0)
+        lang_layout.setSpacing(12)
+
+        self.btn_zh = QPushButton(tr("lang.zh"))
+        self.btn_zh.setMinimumWidth(120)
+        self.btn_zh.setFixedHeight(38)
+        self.btn_zh.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_zh.clicked.connect(lambda: self._on_lang_change("zh"))
+        lang_layout.addWidget(self.btn_zh)
+
+        self.btn_en = QPushButton(tr("lang.en"))
+        self.btn_en.setMinimumWidth(120)
+        self.btn_en.setFixedHeight(38)
+        self.btn_en.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_en.clicked.connect(lambda: self._on_lang_change("en"))
+        lang_layout.addWidget(self.btn_en)
+
+        self._update_lang_buttons()
+        layout.addWidget(lang_frame)
+
         # ── 推理设备 ──
-        self._add_section_label(layout, "推理设备")
+        self._add_section_label(layout, tr("section.inference_device"))
 
         import onnxruntime
         gpu_available = False
@@ -793,10 +824,10 @@ class SettingsDialogPyQt(GlassDialog):
             available = onnxruntime.get_available_providers()
             if 'CUDAExecutionProvider' in available:
                 gpu_available = True
-                gpu_label = "GPU (CUDA)"
+                gpu_label = tr("device.gpu_cuda")
             elif 'DmlExecutionProvider' in available:
                 gpu_available = True
-                gpu_label = "GPU (DirectML)"
+                gpu_label = tr("device.gpu_dml")
         except Exception:
             gpu_available = False
 
@@ -807,14 +838,14 @@ class SettingsDialogPyQt(GlassDialog):
         device_layout.setContentsMargins(0, 0, 0, 0)
         device_layout.setSpacing(12)
 
-        self.btn_cpu = QPushButton("CPU")
+        self.btn_cpu = QPushButton(tr("device.cpu"))
         self.btn_cpu.setMinimumWidth(180)
         self.btn_cpu.setFixedHeight(38)
         self.btn_cpu.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cpu.clicked.connect(lambda: self._on_device_change("cpu"))
         device_layout.addWidget(self.btn_cpu)
 
-        self.btn_gpu = QPushButton(gpu_label if gpu_available else "GPU (不可用)")
+        self.btn_gpu = QPushButton(gpu_label if gpu_available else tr("device.gpu_unavailable"))
         self.btn_gpu.setMinimumWidth(180)
         self.btn_gpu.setFixedHeight(38)
         self.btn_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -827,7 +858,7 @@ class SettingsDialogPyQt(GlassDialog):
         layout.addWidget(device_frame)
 
         # ── 摄像头分辨率 ──
-        self._add_section_label(layout, "摄像头分辨率")
+        self._add_section_label(layout, tr("section.camera_resolution"))
         self.res_dropdown = QComboBox()
         self.res_dropdown.addItems(_RESOLUTIONS)
         self.res_dropdown.setCurrentText(_current_resolution_key())
@@ -839,11 +870,11 @@ class SettingsDialogPyQt(GlassDialog):
         )
         layout.addWidget(self.res_dropdown)
         layout.addWidget(
-            self._make_hint_label("更改将在下次启动摄像头时生效")
+            self._make_hint_label(tr("hint.restart_for_resolution"))
         )
 
         # ── 检测置信度 ──
-        self._add_section_label(layout, "检测置信度")
+        self._add_section_label(layout, tr("section.detection_confidence"))
         conf_row = self._make_slider_row(
             "conf", 30, 80,
             int(APP_SETTINGS.get("confidence", 0.50) * 100),
@@ -854,7 +885,7 @@ class SettingsDialogPyQt(GlassDialog):
         layout.addWidget(conf_row)
 
         # ── 识别容差 ──
-        self._add_section_label(layout, "识别容差")
+        self._add_section_label(layout, tr("section.recognition_tolerance"))
         tol_row = self._make_slider_row(
             "tol", 30, 80,
             int(APP_SETTINGS.get("tolerance", 0.45) * 100),
@@ -865,7 +896,7 @@ class SettingsDialogPyQt(GlassDialog):
         layout.addWidget(tol_row)
 
         # ── 处理帧率 ──
-        self._add_section_label(layout, "处理帧率 (FPS)")
+        self._add_section_label(layout, tr("section.processing_fps"))
         fps_row = self._make_slider_row(
             "fps", 5, 60,
             int(APP_SETTINGS.get("proc_fps", 30)),
@@ -876,13 +907,13 @@ class SettingsDialogPyQt(GlassDialog):
         layout.addWidget(fps_row)
 
         # ── 检测模型尺寸 ──
-        self._add_section_label(layout, "检测模型尺寸 (越小越快)")
+        self._add_section_label(layout, tr("section.detection_size"))
         det_size_row = QWidget()
         det_size_layout = QHBoxLayout(det_size_row)
         det_size_layout.setContentsMargins(0, 0, 0, 0)
         det_size_layout.setSpacing(8)
         self.det_size_combo = QComboBox()
-        self.det_size_combo.addItems(["320 (快速)", "480 (均衡)", "640 (精准)"])
+        self.det_size_combo.addItems([tr("det_size.fast"), tr("det_size.balanced"), tr("det_size.accurate")])
         self.det_size_combo.setStyleSheet(
             "QComboBox { color: #FFFFFF; background: #2A2A2A; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 6px 12px; font-size: 14px; }"
             "QComboBox:hover { border-color: rgba(255,255,255,0.20); }"
@@ -897,33 +928,33 @@ class SettingsDialogPyQt(GlassDialog):
             self.det_size_combo.setCurrentIndex(2)
         det_size_layout.addWidget(self.det_size_combo)
         det_size_layout.addWidget(
-            self._make_hint_label("需重启程序生效")
+            self._make_hint_label(tr("hint.restart_needed"))
         )
         det_size_layout.addStretch()
         layout.addWidget(det_size_row)
 
         # ── 追踪平滑帧数 ──
-        self._add_section_label(layout, "追踪平滑帧数")
+        self._add_section_label(layout, tr("section.tracking_smoothness"))
         smooth_row = self._make_slider_row(
             "smooth", 3, 10,
             APP_SETTINGS.get("track_smooth", 5),
             self._update_smooth_label
         )
-        self.smooth_label = self._make_value_label(f"{APP_SETTINGS.get('track_smooth', 5)} 帧", width=60)
+        self.smooth_label = self._make_value_label(tr("smooth.frames_unit", v=APP_SETTINGS.get("track_smooth", 5)), width=60)
         smooth_row.layout().addWidget(self.smooth_label)
         layout.addWidget(smooth_row)
 
         # ── 质量过滤 ──
-        self._add_section_label(layout, "质量过滤")
+        self._add_section_label(layout, tr("section.quality_filter"))
         qf_row = QWidget()
         qf_layout = QHBoxLayout(qf_row)
         qf_layout.setContentsMargins(0, 0, 0, 0)
         qf_layout.setSpacing(12)
-        self.qf_check = QCheckBox("启用模糊度过滤")
+        self.qf_check = QCheckBox(tr("quality_filter.label"))
         self.qf_check.setChecked(APP_SETTINGS.get("quality_filter", True))
         qf_layout.addWidget(self.qf_check)
         self.minface_combo = QComboBox()
-        self.minface_combo.addItems(["最小 60px", "最小 80px", "最小 100px", "最小 120px"])
+        self.minface_combo.addItems([tr("min_face.60"), tr("min_face.80"), tr("min_face.100"), tr("min_face.120")])
         self.minface_combo.setStyleSheet(
             "QComboBox { color: #FFFFFF; background: #2A2A2A; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 6px 12px; font-size: 14px; }"
             "QComboBox:hover { border-color: rgba(255,255,255,0.20); }"
@@ -944,12 +975,12 @@ class SettingsDialogPyQt(GlassDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        cancel_btn = QPushButton("取消")
+        cancel_btn = QPushButton(tr("btn.cancel"))
         cancel_btn.setFixedSize(120, 40)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        apply_btn = QPushButton("应用")
+        apply_btn = QPushButton(tr("btn.apply"))
         apply_btn.setObjectName("btnAccent")
         apply_btn.setFixedSize(120, 40)
         apply_btn.clicked.connect(self._apply_and_close)
@@ -1005,7 +1036,7 @@ class SettingsDialogPyQt(GlassDialog):
     def _update_fps_label(self, v):
         self.fps_label.setText(f"{v:.0f}")
     def _update_smooth_label(self, v):
-        self.smooth_label.setText(f"{v} 帧")
+        self.smooth_label.setText(tr("smooth.frames_unit", v=v))
 
     def _on_device_change(self, device):
         self.device_var = device
@@ -1023,6 +1054,21 @@ class SettingsDialogPyQt(GlassDialog):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
+    def _on_lang_change(self, lang):
+        self.lang_var = lang
+        self._update_lang_buttons()
+
+    def _update_lang_buttons(self):
+        if self.lang_var == "en":
+            self.btn_en.setObjectName("btnGpuActive")
+            self.btn_zh.setObjectName("btnCpuActive")
+        else:
+            self.btn_zh.setObjectName("btnGpuActive")
+            self.btn_en.setObjectName("btnCpuActive")
+        for btn in [self.btn_zh, self.btn_en]:
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
     def _apply_and_close(self):
         new_res_str = self.res_dropdown.currentText()
         new_w, new_h = _res_to_tuple(new_res_str)
@@ -1036,6 +1082,7 @@ class SettingsDialogPyQt(GlassDialog):
         new_minface = minface_map[self.minface_combo.currentIndex()]
 
         settings = {
+            "language": self.lang_var,
             "device": self.device_var,
             "cam_width": new_w,
             "cam_height": new_h,
@@ -1053,7 +1100,10 @@ class SettingsDialogPyQt(GlassDialog):
         old_h = APP_SETTINGS.get("cam_height", 360)
         res_changed = (new_w != old_w or new_h != old_h)
 
+        # 保存设置 + 切换语言（在 on_settings_changed 之前触发 UI 更新）
         save_settings(settings)
+        from i18n import set_language
+        set_language(self.lang_var)
         for k, v in settings.items():
             APP_SETTINGS[k] = v
         if self.parent_app and hasattr(self.parent_app, 'on_settings_changed'):
@@ -1061,9 +1111,8 @@ class SettingsDialogPyQt(GlassDialog):
 
         if res_changed:
             QMessageBox.information(
-                self, "分辨率更改",
-                f"摄像头分辨率已设为 {new_w}×{new_h}。\n"
-                "请重启程序使新分辨率生效。"
+                self, tr("dialog.resolution_changed"),
+                tr("prompt.resolution_changed_msg", w=new_w, h=new_h)
             )
 
         self.accept()
@@ -1097,10 +1146,13 @@ class FaceVisionWindow(QMainWindow):
         self._last_detected_faces = []
 
         self._setup_ui()
+        # 注册语言变更回调
+        self._status_key = "status.ready_full"
+        self._unregister_lang = on_language_change(lambda lang: self._retranslate_ui())
         # 用户通过摄像头按钮手动启动
 
     def _setup_ui(self):
-        self.setWindowTitle("FaceVision")
+        self.setWindowTitle(tr("window.title"))
         self.setMinimumSize(1100, 720)
         self.resize(1280, 800)
 
@@ -1149,11 +1201,11 @@ class FaceVisionWindow(QMainWindow):
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(16, 0, 8, 0)
 
-        icon_label = QLabel("🔷 FaceVision")
-        icon_label.setStyleSheet(
+        self._title_icon_label = QLabel(tr("title.icon_label"))
+        self._title_icon_label.setStyleSheet(
             "color: #FFFFFF; font-size: 14px; font-weight: 600; background: transparent;"
         )
-        layout.addWidget(icon_label)
+        layout.addWidget(self._title_icon_label)
         layout.addStretch()
 
         # 最小化
@@ -1200,7 +1252,7 @@ class FaceVisionWindow(QMainWindow):
         self.video_label.setMinimumSize(640, 360)
         self.video_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.video_label.setStyleSheet("background: rgba(0,0,0,0.3); border-radius: 8px;")
-        self.video_label.setText("📷 点击「启动摄像头」开始\n\n实时人脸识别")
+        self.video_label.setText(tr("placeholder.video"))
         layout.addWidget(self.video_label)
 
         # 控制条（摄像头开关 + 状态）
@@ -1210,7 +1262,7 @@ class FaceVisionWindow(QMainWindow):
         ctrl_layout.setContentsMargins(12, 4, 12, 4)
         ctrl_layout.setSpacing(10)
 
-        self.btn_camera = QPushButton("▶  启动摄像头")
+        self.btn_camera = QPushButton(tr("btn.start_camera"))
         self.btn_camera.setObjectName("btnAccent")
         self.btn_camera.setFixedHeight(34)
         self.btn_camera.setFixedWidth(150)
@@ -1218,7 +1270,7 @@ class FaceVisionWindow(QMainWindow):
         self.btn_camera.clicked.connect(self._toggle_camera)
         ctrl_layout.addWidget(self.btn_camera)
 
-        self.status_label = QLabel("● 就绪")
+        self.status_label = QLabel(tr("status.ready"))
         self.status_label.setStyleSheet("color: #FFFFFF; font-size: 13px;")
         ctrl_layout.addWidget(self.status_label)
         ctrl_layout.addStretch()
@@ -1237,14 +1289,14 @@ class FaceVisionWindow(QMainWindow):
                 self.camera.start()
                 self.is_running = True
                 self._start_processing()
-                self.btn_camera.setText("⏹  停止摄像头")
+                self.btn_camera.setText(tr("btn.stop_camera"))
                 self.btn_camera.setObjectName("btnDanger")
                 self.btn_camera.style().unpolish(self.btn_camera)
                 self.btn_camera.style().polish(self.btn_camera)
-                self._set_status("● 运行中", SUCCESS_COLOR)
+                self._set_status(tr("status.running"), SUCCESS_COLOR)
                 self.video_label.setText("")
             except Exception as e:
-                QMessageBox.critical(self, "摄像头错误", str(e))
+                QMessageBox.critical(self, tr("dialog.camera_error"), str(e))
                 self.is_running = False
         else:
             if hasattr(self, 'processing') and self.processing:
@@ -1253,14 +1305,14 @@ class FaceVisionWindow(QMainWindow):
             self.camera.stop()
             self.is_running = False
 
-            self.btn_camera.setText("▶  启动摄像头")
+            self.btn_camera.setText(tr("btn.start_camera"))
             self.btn_camera.setObjectName("btnAccent")
             self.btn_camera.style().unpolish(self.btn_camera)
             self.btn_camera.style().polish(self.btn_camera)
 
             self.video_label.setPixmap(QPixmap())
-            self.video_label.setText("📷 点击「启动摄像头」开始\n\n实时人脸识别")
-            self._set_status("● 就绪", "#FFFFFF")
+            self.video_label.setText(tr("placeholder.video"))
+            self._set_status(tr("status.ready"), "#FFFFFF")
             self.fps_label.setText("")
 
     def _create_left_panel(self):
@@ -1290,11 +1342,11 @@ class FaceVisionWindow(QMainWindow):
         person_layout.setSpacing(10)
 
         person_header = QHBoxLayout()
-        person_title = QLabel("👤 已注册人员")
-        person_title.setStyleSheet(
+        self._person_title = QLabel(tr("section.registered_persons"))
+        self._person_title.setStyleSheet(
             "color: #FFFFFF; font-size: 15px; font-weight: 600; background: transparent;"
         )
-        person_header.addWidget(person_title)
+        person_header.addWidget(self._person_title)
         person_header.addStretch()
         person_layout.addLayout(person_header)
 
@@ -1306,22 +1358,22 @@ class FaceVisionWindow(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
 
-        add_btn = QPushButton("添加")
-        add_btn.setObjectName("btnAccent")
-        add_btn.setFixedHeight(36)
-        add_btn.clicked.connect(self._on_add_person)
-        btn_row.addWidget(add_btn, 1)
+        self._add_btn = QPushButton(tr("btn.add"))
+        self._add_btn.setObjectName("btnAccent")
+        self._add_btn.setFixedHeight(36)
+        self._add_btn.clicked.connect(self._on_add_person)
+        btn_row.addWidget(self._add_btn, 1)
 
-        import_btn = QPushButton("从图片")
-        import_btn.setFixedHeight(36)
-        import_btn.clicked.connect(self._on_import_image)
-        btn_row.addWidget(import_btn, 1)
+        self._import_btn = QPushButton(tr("btn.import_image"))
+        self._import_btn.setFixedHeight(36)
+        self._import_btn.clicked.connect(self._on_import_image)
+        btn_row.addWidget(self._import_btn, 1)
 
-        delete_btn = QPushButton("删除")
-        delete_btn.setObjectName("btnDanger")
-        delete_btn.setFixedHeight(36)
-        delete_btn.clicked.connect(self._on_delete_person)
-        btn_row.addWidget(delete_btn, 1)
+        self._delete_btn = QPushButton(tr("btn.delete"))
+        self._delete_btn.setObjectName("btnDanger")
+        self._delete_btn.setFixedHeight(36)
+        self._delete_btn.clicked.connect(self._on_delete_person)
+        btn_row.addWidget(self._delete_btn, 1)
 
         person_layout.addLayout(btn_row)
         layout.addWidget(person_card)
@@ -1336,16 +1388,16 @@ class FaceVisionWindow(QMainWindow):
         settings_layout.setContentsMargins(16, 14, 16, 14)
         settings_layout.setSpacing(10)
 
-        settings_title = QLabel("⚙ 快速操作")
-        settings_title.setStyleSheet(
+        self._settings_title = QLabel(tr("section.quick_actions"))
+        self._settings_title.setStyleSheet(
             "color: #FFFFFF; font-size: 15px; font-weight: 600; background: transparent;"
         )
-        settings_layout.addWidget(settings_title)
+        settings_layout.addWidget(self._settings_title)
 
-        settings_btn = QPushButton("打开完整设置")
-        settings_btn.setFixedHeight(36)
-        settings_btn.clicked.connect(self._open_settings)
-        settings_layout.addWidget(settings_btn)
+        self._settings_btn = QPushButton(tr("btn.open_settings"))
+        self._settings_btn.setFixedHeight(36)
+        self._settings_btn.clicked.connect(self._open_settings)
+        settings_layout.addWidget(self._settings_btn)
 
         layout.addWidget(settings_card)
 
@@ -1359,24 +1411,24 @@ class FaceVisionWindow(QMainWindow):
         info_layout.setContentsMargins(16, 14, 16, 14)
         info_layout.setSpacing(6)
 
-        info_title = QLabel("ℹ 设备信息")
-        info_title.setStyleSheet(
+        self._info_title = QLabel(tr("section.device_info"))
+        self._info_title.setStyleSheet(
             "color: #FFFFFF; font-size: 15px; font-weight: 600; background: transparent;"
         )
-        info_layout.addWidget(info_title)
+        info_layout.addWidget(self._info_title)
 
         device = APP_SETTINGS.get("device", "cpu")
         det_size = APP_SETTINGS.get("det_size", 640)
-        self.info_device = QLabel(f"推理设备: {device}")
+        self.info_device = QLabel(tr("info.device", device=device))
         self.info_device.setStyleSheet("color: #FFFFFF; font-size: 12px;")
         info_layout.addWidget(self.info_device)
 
-        self.info_det_size = QLabel(f"检测尺寸: {det_size}px")
+        self.info_det_size = QLabel(tr("info.det_size", size=det_size))
         self.info_det_size.setStyleSheet("color: #FFFFFF; font-size: 12px;")
         info_layout.addWidget(self.info_det_size)
 
         person_count = len(self.db.get_names())
-        self.info_people = QLabel(f"已注册: {person_count} 人")
+        self.info_people = QLabel(tr("info.people_count", count=person_count))
         self.info_people.setStyleSheet("color: #FFFFFF; font-size: 12px;")
         info_layout.addWidget(self.info_people)
 
@@ -1405,7 +1457,7 @@ class FaceVisionWindow(QMainWindow):
             self.person_list.addWidget(label)
 
         if not names:
-            placeholder = QLabel("  暂无注册人员")
+            placeholder = QLabel(tr("placeholder.no_persons"))
             placeholder.setStyleSheet(
                 "color: #FFFFFF; font-size: 13px; padding: 6px 8px;"
             )
@@ -1436,12 +1488,12 @@ class FaceVisionWindow(QMainWindow):
         display = frame.copy()
         for (x1, y1, x2, y2, conf, name, sim) in recognized:
             # 边框颜色：已确认身份=蓝色，未知=灰色
-            is_unknown = (name == "未知" or name == "unknown")
+            is_unknown = (name == UNKNOWN_SENTINEL)
             color = (96, 205, 255) if not is_unknown else (200, 200, 200)
             cv2.rectangle(display, (x1, y1), (x2, y2), color, 2)
 
             # 标签背景
-            label = f"{name} ({sim:.0%})" if not is_unknown else f"未知 ({sim:.0%})"
+            label = f"{name} ({sim:.0%})" if not is_unknown else tr("face.unknown_with_sim", sim=sim)
             (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
             cv2.rectangle(display, (x1, y1 - th - 10), (x1 + tw + 8, y1),
                           (30, 30, 30), -1)
@@ -1470,7 +1522,7 @@ class FaceVisionWindow(QMainWindow):
         elapsed = time.time() - self._last_fps_time
         if elapsed > 0:
             fps = self._frame_count / elapsed
-            self.fps_label.setText(f"{fps:.1f} FPS")
+            self.fps_label.setText(tr("fps.label", fps=fps))
         self._frame_count = 0
         self._last_fps_time = time.time()
 
@@ -1484,7 +1536,7 @@ class FaceVisionWindow(QMainWindow):
 
     def _add_from_camera(self):
         self.processing.pause()
-        dialog = AddPersonDialogPyQt(self, "注册人员", "请为此人输入姓名：")
+        dialog = AddPersonDialogPyQt(self, tr("dialog.register_person"), tr("prompt.enter_name_for_camera"))
         if dialog.exec() != QDialog.DialogCode.Accepted:
             self._resume_processing()
             return
@@ -1523,7 +1575,7 @@ class FaceVisionWindow(QMainWindow):
                 break
 
         if emb is None:
-            QMessageBox.warning(self, "编码失败", "无法提取人脸特征，请重试。")
+            QMessageBox.warning(self, tr("dialog.encoding_failed"), tr("prompt.cannot_extract_feature_retry"))
             self._resume_processing()
             return
 
@@ -1536,22 +1588,22 @@ class FaceVisionWindow(QMainWindow):
             known_encodings, known_names = self.db.get_encodings_and_names()
             self.recognizer.update_cache(known_encodings, known_names, self.db.version)
             self._refresh_person_list()
-            self._set_status(f"✓ {msg}", SUCCESS_COLOR)
+            self._set_status(tr("status.add_success", name=name), SUCCESS_COLOR)
         else:
-            QMessageBox.warning(self, "添加失败", msg)
-            self._set_status("● 就绪", "#FFFFFF")
+            QMessageBox.warning(self, tr("dialog.add_failed"), tr("status.add_failed_exists", name=name))
+            self._set_status(tr("status.ready"), "#FFFFFF")
 
         self._resume_processing()
 
     def _add_from_image_prompt(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择图片", "",
-            "Images (*.jpg *.jpeg *.png *.bmp *.webp)"
+            self, tr("dialog.select_image"), "",
+            tr("image_filter")
         )
         if not file_path:
             return
 
-        dialog = AddPersonDialogPyQt(self, "从图片注册", "请输入人员姓名：")
+        dialog = AddPersonDialogPyQt(self, tr("dialog.register_from_image"), tr("prompt.enter_name_generic"))
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         name = dialog.get_result()
@@ -1564,11 +1616,11 @@ class FaceVisionWindow(QMainWindow):
         try:
             img = cv2.imread(file_path)
             if img is None:
-                QMessageBox.warning(self, "图片错误", "无法读取图片文件。")
+                QMessageBox.warning(self, tr("dialog.image_error"), tr("prompt.cannot_read_image"))
                 return
             faces = self.detector.detect_with_embeddings(img)
             if len(faces) == 0:
-                QMessageBox.warning(self, "未检测到人脸", "所选图片中未检测到清晰人脸。")
+                QMessageBox.warning(self, tr("dialog.no_face_detected"), tr("prompt.no_clear_face"))
                 return
 
             if len(faces) == 1:
@@ -1586,7 +1638,7 @@ class FaceVisionWindow(QMainWindow):
             x1, y1, x2, y2, det_conf = best[0], best[1], best[2], best[3], best[4]
             embedding = best[5]
             if embedding is None:
-                QMessageBox.warning(self, "编码失败", "无法提取人脸特征。")
+                QMessageBox.warning(self, tr("dialog.encoding_failed"), tr("prompt.cannot_extract_feature"))
                 return
 
             ext = Path(file_path).suffix
@@ -1600,11 +1652,11 @@ class FaceVisionWindow(QMainWindow):
                 known_encodings, known_names = self.db.get_encodings_and_names()
                 self.recognizer.update_cache(known_encodings, known_names, self.db.version)
                 self._refresh_person_list()
-                self._set_status(f"✓ {msg}", SUCCESS_COLOR)
+                self._set_status(tr("status.add_success", name=name), SUCCESS_COLOR)
             else:
-                QMessageBox.warning(self, "添加失败", msg)
+                QMessageBox.warning(self, tr("dialog.add_failed"), tr("status.add_failed_exists", name=name))
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"导入失败: {e}")
+            QMessageBox.critical(self, tr("dialog.error"), tr("prompt.import_failed", error=e))
 
     def _on_import_image(self):
         self._add_from_image_prompt()
@@ -1612,7 +1664,7 @@ class FaceVisionWindow(QMainWindow):
     def _on_delete_person(self):
         names = self.db.get_names()
         if not names:
-            QMessageBox.information(self, "提示", "没有已注册的人员。")
+            QMessageBox.information(self, tr("dialog.tip"), tr("prompt.no_registered"))
             return
         dialog = BatchDeleteDialogPyQt(self, names)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -1625,7 +1677,7 @@ class FaceVisionWindow(QMainWindow):
         self._refresh_person_list()
         known_encodings, known_names = self.db.get_encodings_and_names()
         self.recognizer.update_cache(known_encodings, known_names, self.db.version)
-        self._set_status(f"✓ 已删除 {len(selected)} 人", SUCCESS_COLOR)
+        self._set_status(tr("status.deleted_count", count=len(selected)), SUCCESS_COLOR)
 
     def _open_settings(self):
         dialog = SettingsDialogPyQt(self)
@@ -1656,11 +1708,11 @@ class FaceVisionWindow(QMainWindow):
             pass  # proc_fps is handled per-frame in ProcessingThread loop
 
         # 更新信息面板
-        self.info_device.setText(f"推理设备: {APP_SETTINGS.get('device', 'cpu')}")
-        self.info_det_size.setText(f"检测尺寸: {APP_SETTINGS.get('det_size', 640)}px")
-        self.info_people.setText(f"已注册: {len(self.db.get_names())} 人")
+        self.info_device.setText(tr("info.device", device=APP_SETTINGS.get("device", "cpu")))
+        self.info_det_size.setText(tr("info.det_size", size=APP_SETTINGS.get("det_size", 640)))
+        self.info_people.setText(tr("info.people_count", count=len(self.db.get_names())))
 
-        self._set_status("✓ 设置已应用", SUCCESS_COLOR)
+        self._set_status(tr("status.settings_applied"), SUCCESS_COLOR)
 
     def _resume_processing(self):
         if self.processing:
@@ -1696,13 +1748,47 @@ class FaceVisionWindow(QMainWindow):
         else:
             super().mouseReleaseEvent(event)
 
+    def _retranslate_ui(self):
+        """语言切换后更新所有 UI 文字"""
+        self.setWindowTitle(tr("window.title"))
+        self._title_icon_label.setText(tr("title.icon_label"))
+
+        # 摄像头按钮
+        if self.is_running:
+            self.btn_camera.setText(tr("btn.stop_camera"))
+        else:
+            self.btn_camera.setText(tr("btn.start_camera"))
+
+        # 视频占位
+        if not self.is_running and not self.video_label.pixmap():
+            self.video_label.setText(tr("placeholder.video"))
+
+        # 状态标签 — 根据当前运行状态恢复
+        if self.is_running:
+            self._set_status(tr("status.running"), SUCCESS_COLOR)
+        else:
+            self._set_status(tr("status.ready"), "#FFFFFF")
+
+        # 左侧面板
+        self._person_title.setText(tr("section.registered_persons"))
+        self._add_btn.setText(tr("btn.add"))
+        self._import_btn.setText(tr("btn.import_image"))
+        self._delete_btn.setText(tr("btn.delete"))
+        self._settings_title.setText(tr("section.quick_actions"))
+        self._settings_btn.setText(tr("btn.open_settings"))
+        self._info_title.setText(tr("section.device_info"))
+        self.info_device.setText(tr("info.device", device=APP_SETTINGS.get("device", "cpu")))
+        self.info_det_size.setText(tr("info.det_size", size=APP_SETTINGS.get("det_size", 640)))
+        self.info_people.setText(tr("info.people_count", count=len(self.db.get_names())))
+        self._refresh_person_list()
+
     def showEvent(self, event):
         super().showEvent(event)
         # Enable Windows 11 Mica backdrop (prevents ghosting on frameless windows)
         apply_mica(int(self.winId()))
         if not hasattr(self, '_started') or not self._started:
             self._started = True
-            self._set_status("● 就绪 — 点击「启动摄像头」开始", "#FFFFFF")
+            self._set_status(tr("status.ready_full"), "#FFFFFF")
 
     def closeEvent(self, event):
         if self.processing:
